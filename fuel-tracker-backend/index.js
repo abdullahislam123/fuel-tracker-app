@@ -11,9 +11,10 @@ const User = require('./models/User');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = "meraSecretKey123"; // Asli app m isay .env m rakhte hain
+const JWT_SECRET = "meraSecretKey123";
 
 // Middleware
+// Sab se zaroori change: CORS sabko allow karega
 app.use(cors());
 app.use(express.json());
 
@@ -95,14 +96,13 @@ app.get('/history', authenticateToken, async (req, res) => {
   }
 });
 
-// 5. UPDATE ENTRY (Secure & New!) 🛠️
+// 5. UPDATE ENTRY (Secure)
 app.put('/update/:id', authenticateToken, async (req, res) => {
   try {
-    // Sirf wahi update hoga jo user ka apna ho
     const updatedEntry = await FuelEntry.findOneAndUpdate(
       { _id: req.params.id, userId: req.user.id }, 
       req.body,
-      { new: true } // Return updated data
+      { new: true }
     );
     
     if (!updatedEntry) return res.status(404).json({ error: "Entry not found or unauthorized" });
@@ -125,42 +125,29 @@ app.delete('/delete/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Localhost ke liye
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-}
-
-// Vercel ke liye
-module.exports = app;
 // 7. UPDATE PROFILE (Secure) 🛠️
+// (Isko yahan hona chahiye, export se pehle)
 app.put('/profile', authenticateToken, async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    const userId = req.user.id; // Token se ID nikali
+    const userId = req.user.id;
 
-    // 1. User dhoondo
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    // 2. Agar Email change ho rahi hai, to check karo ke ye kisi aur ki to nahi?
     if (email && email !== user.email) {
       const existingUser = await User.findOne({ email });
       if (existingUser) return res.status(400).json({ error: "Email already taken" });
       user.email = email;
     }
 
-    // 3. Agar Username aa raha hai to update karo
     if (username) user.username = username;
 
-    // 4. Agar Password naya aa raha hai, to Hash karo
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
       user.password = hashedPassword;
     }
 
-    // 5. Save karo
     await user.save();
 
     res.json({ message: "Profile Updated Successfully!", user: { username: user.username, email: user.email } });
@@ -170,3 +157,16 @@ app.put('/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Update failed" });
   }
 });
+
+
+// --- SERVER START ---
+
+// Localhost ke liye
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+// Vercel ke liye (Ye line sabse aakhir mein honi chahiye)
+module.exports = app;
