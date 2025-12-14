@@ -8,8 +8,6 @@ const Dashboard = () => {
   const [username, setUsername] = useState("User");
   const navigate = useNavigate();
 
-  // ⚠️ IMPORTANT: Apna naya Backend Link yahan dalo
-  // (Jo abhi Vercel se mila tha)
   const API_URL = "https://fuel-backend-api.vercel.app"; 
 
   useEffect(() => {
@@ -37,6 +35,9 @@ const Dashboard = () => {
         return res.json();
       })
       .then(data => {
+        // 🔥 DEBUGGING: Ye line console m data dikhayegi
+        console.log("🔥 API Data Received:", data);
+        
         if(Array.isArray(data)) setEntries(data);
         setLoading(false);
       })
@@ -46,10 +47,19 @@ const Dashboard = () => {
       });
   }, [navigate]);
 
-  // --- SAFE CALCULATIONS ---
-  // Backend se kabhi 'totalCost' aata hai kabhi 'cost', hum dono check karenge
-  const totalSpent = entries.reduce((acc, item) => acc + parseFloat(item.totalCost || item.cost || 0), 0);
-  const totalLiters = entries.reduce((acc, item) => acc + parseFloat(item.liters || 0), 0);
+  // --- 🛠️ ROBUST CALCULATIONS (Har qisam ka naam check karega) ---
+  const totalSpent = entries.reduce((acc, item) => {
+    // Database m shayad 'cost', 'totalCost', 'price', ya 'amount' ho skta h
+    const val = item.totalCost || item.cost || item.price || item.amount || 0;
+    return acc + parseFloat(val);
+  }, 0);
+
+  const totalLiters = entries.reduce((acc, item) => {
+    // Database m shayad 'liters', 'fuelAmount', 'quantity' ho skta h
+    const val = item.liters || item.fuelAmount || item.quantity || item.litres || 0;
+    return acc + parseFloat(val);
+  }, 0);
+
   const avgPrice = totalLiters > 0 ? (totalSpent / totalLiters).toFixed(2) : 0;
 
   if (loading) return <div className="p-10 text-center text-emerald-500 font-bold animate-pulse">Loading Dashboard...</div>;
@@ -88,7 +98,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* --- NEW FEATURE: RECENT ACTIVITY (Last 3 Entries) --- */}
+      {/* --- RECENT ACTIVITY --- */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-50 flex justify-between items-center">
             <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -108,12 +118,17 @@ const Dashboard = () => {
                                 <FiCalendar size={18} />
                             </div>
                             <div>
-                                <p className="font-bold text-slate-700">{item.liters} Liters</p>
+                                {/* Yahan bhi safety check lagaya h */}
+                                <p className="font-bold text-slate-700">
+                                  {item.liters || item.fuelAmount || item.quantity || 0} Liters
+                                </p>
                                 <p className="text-xs text-gray-400">{new Date(item.date || item.createdAt).toLocaleDateString()}</p>
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="font-bold text-slate-900">Rs. {(item.totalCost || item.cost).toLocaleString()}</p>
+                            <p className="font-bold text-slate-900">
+                              Rs. {(item.totalCost || item.cost || item.price || 0).toLocaleString()}
+                            </p>
                             <p className="text-xs text-gray-500">Rate: {item.pricePerLiter || 0}</p>
                         </div>
                     </div>
