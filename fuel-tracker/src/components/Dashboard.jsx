@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from "react";
-import { FiDollarSign, FiDroplet, FiTrendingUp } from "react-icons/fi";
-import { useNavigate } from "react-router-dom"; 
+import { FiDollarSign, FiDroplet, FiTrendingUp, FiClock, FiCalendar } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [username, setUsername] = useState("User"); // Default name
+  const [username, setUsername] = useState("User");
   const navigate = useNavigate();
 
+  // ⚠️ IMPORTANT: Apna naya Backend Link yahan dalo
+  // (Jo abhi Vercel se mila tha)
+  const API_URL = "https://fuel-backend-api.vercel.app"; 
+
   useEffect(() => {
-    // 1. User ka NAAM nikalo LocalStorage se
+    // 1. User Name
     const userData = JSON.parse(localStorage.getItem("user"));
     if (userData && userData.username) {
       setUsername(userData.username);
     }
 
-    // 2. Data Fetch Karo
+    // 2. Fetch Data
     const token = localStorage.getItem("token");
 
-    fetch('https://fuel-tracker-api.vercel.app/history', {
+    fetch(`${API_URL}/history`, {
       method: 'GET',
       headers: {
         'Authorization': token 
@@ -40,16 +44,19 @@ const Dashboard = () => {
         console.error("Error:", err);
         setLoading(false);
       });
-  }, []);
+  }, [navigate]);
 
-  const totalSpent = entries.reduce((acc, item) => acc + parseFloat(item.cost || 0), 0);
+  // --- SAFE CALCULATIONS ---
+  // Backend se kabhi 'totalCost' aata hai kabhi 'cost', hum dono check karenge
+  const totalSpent = entries.reduce((acc, item) => acc + parseFloat(item.totalCost || item.cost || 0), 0);
   const totalLiters = entries.reduce((acc, item) => acc + parseFloat(item.liters || 0), 0);
   const avgPrice = totalLiters > 0 ? (totalSpent / totalLiters).toFixed(2) : 0;
 
-  if (loading) return <div className="p-10 text-center text-emerald-500 font-bold">Loading Data...</div>;
+  if (loading) return <div className="p-10 text-center text-emerald-500 font-bold animate-pulse">Loading Dashboard...</div>;
 
   return (
     <div>
+      {/* --- HEADER --- */}
       <header className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Overview</h1>
         <p className="text-slate-500 text-sm mt-1">
@@ -57,25 +64,64 @@ const Dashboard = () => {
         </p>
       </header>
 
+      {/* --- CARDS SECTION --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+        {/* Card 1: Total Spent */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden transition hover:shadow-md">
           <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Spent</div>
           <div className="text-3xl font-extrabold text-slate-900 mt-2">Rs. {totalSpent.toLocaleString()}</div>
           <div className="absolute top-5 right-5 p-3 bg-emerald-50 text-emerald-500 rounded-xl"><FiDollarSign size={24} /></div>
         </div>
         
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+        {/* Card 2: Total Liters */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden transition hover:shadow-md">
           <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Consumed</div>
-          <div className="text-3xl font-extrabold text-slate-900 mt-2">{totalLiters} <span className="text-lg text-gray-400 font-medium">L</span></div>
+          <div className="text-3xl font-extrabold text-slate-900 mt-2">{totalLiters.toFixed(2)} <span className="text-lg text-gray-400 font-medium">L</span></div>
           <div className="absolute top-5 right-5 p-3 bg-blue-50 text-blue-500 rounded-xl"><FiDroplet size={24} /></div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+        {/* Card 3: Avg Rate */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden transition hover:shadow-md">
           <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Avg Rate</div>
           <div className="text-3xl font-extrabold text-slate-900 mt-2">Rs. {avgPrice}</div>
           <div className="absolute top-5 right-5 p-3 bg-orange-50 text-orange-500 rounded-xl"><FiTrendingUp size={24} /></div>
         </div>
       </div>
+
+      {/* --- NEW FEATURE: RECENT ACTIVITY (Last 3 Entries) --- */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <FiClock className="text-emerald-500"/> Recent Activity
+            </h3>
+            <span className="text-xs text-gray-400">Last 3 entries</span>
+        </div>
+        
+        <div className="p-4">
+            {entries.length === 0 ? (
+                <p className="text-center text-gray-400 py-4">No data available yet.</p>
+            ) : (
+                entries.slice(0, 3).map((item, index) => (
+                    <div key={index} className="flex justify-between items-center p-3 mb-2 bg-gray-50 rounded-xl hover:bg-emerald-50 transition">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-white p-2 rounded-lg text-emerald-600 shadow-sm">
+                                <FiCalendar size={18} />
+                            </div>
+                            <div>
+                                <p className="font-bold text-slate-700">{item.liters} Liters</p>
+                                <p className="text-xs text-gray-400">{new Date(item.date || item.createdAt).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="font-bold text-slate-900">Rs. {(item.totalCost || item.cost).toLocaleString()}</p>
+                            <p className="text-xs text-gray-500">Rate: {item.pricePerLiter || 0}</p>
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+      </div>
+
     </div>
   );
 };
