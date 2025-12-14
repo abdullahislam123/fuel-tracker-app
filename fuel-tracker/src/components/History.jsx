@@ -19,7 +19,7 @@ const History = () => {
         return;
     }
 
-    fetch('http://localhost:5000/history', {
+    fetch('https://fuel-tracker-api.vercel.app/history', {
         headers: { 'Authorization': token }
     })
       .then(res => {
@@ -41,7 +41,7 @@ const History = () => {
     if (window.confirm("Are you sure you want to delete this record?")) {
       const token = localStorage.getItem("token");
       try {
-        const res = await fetch(`http://localhost:5000/delete/${id}`, { 
+        const res = await fetch(`https://fuel-tracker-api.vercel.app/delete/${id}`, { 
             method: 'DELETE',
             headers: { 'Authorization': token } 
         });
@@ -83,7 +83,7 @@ const History = () => {
   const saveEdit = async () => {
     const token = localStorage.getItem("token");
     try {
-        const res = await fetch(`http://localhost:5000/update/${editData._id}`, {
+        const res = await fetch(`https://fuel-tracker-api.vercel.app/update/${editData._id}`, {
             method: 'PUT',
             headers: { 
                 'Content-Type': 'application/json',

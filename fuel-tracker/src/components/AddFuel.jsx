@@ -35,7 +35,7 @@ const AddFuel = () => {
     const token = localStorage.getItem("token"); // 1. Token nikalo
 
     try {
-      const response = await fetch('http://localhost:5000/add', {
+      const response = await fetch('https://fuel-tracker-api.vercel.app/add', {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',

@@ -18,7 +18,7 @@ const Dashboard = () => {
     // 2. Data Fetch Karo
     const token = localStorage.getItem("token");
 
-    fetch('http://localhost:5000/history', {
+    fetch('https://fuel-tracker-api.vercel.app/history', {
       method: 'GET',
       headers: {
         'Authorization': token 

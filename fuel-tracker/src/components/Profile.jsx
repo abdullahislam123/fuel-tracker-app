@@ -22,7 +22,7 @@ const Profile = () => {
     const token = localStorage.getItem("token");
 
     try {
-      const res = await fetch('http://localhost:5000/profile', {
+      const res = await fetch('https://fuel-tracker-api.vercel.app/profile', {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
