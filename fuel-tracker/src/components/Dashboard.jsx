@@ -9,7 +9,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   // Live Backend URL
-  const API_URL = "https://fuel-backend-api.vercel.app"; 
+  // ⚠️ FIX: Yahan wahi link lagaya jo History.jsx mein chal raha hai
+  const API_URL = "https://fuel-tracker-api.vercel.app";
 
   useEffect(() => {
     // 1. Get User Name
