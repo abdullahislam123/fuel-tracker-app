@@ -125,10 +125,15 @@ app.delete('/delete/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// --- SERVER START ---
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} 🚀`);
-});
+// Localhost ke liye
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+// Vercel ke liye
+module.exports = app;
 // 7. UPDATE PROFILE (Secure) 🛠️
 app.put('/profile', authenticateToken, async (req, res) => {
   try {
