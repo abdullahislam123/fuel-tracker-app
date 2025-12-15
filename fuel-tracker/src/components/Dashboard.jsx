@@ -77,78 +77,86 @@ const Dashboard = () => {
     <div>
       {/* --- HEADER --- */}
       <header className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Overview</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Welcome back, <span className="font-extrabold text-emerald-600 text-lg uppercase">{username}</span>! 👋
-        </p>
+            {/* ⭐ 1. Welcome Back Heading (Bigger size: text-4xl) */}
+        <h1 className="text-4xl font-bold text-slate-900 dark:text-gray-50">
+            Welcome back,
+        </h1>
+            {/* ⭐ 2. Username (Next Line, Even Bigger size: text-5xl, Capitalized) */}
+        <p className="text-5xl font-extrabold text-white dark:text-white capitalize leading-snug">
+            <span className="text-emerald-500 dark:text-emerald-400">{username}</span>! 👋
+        </p>
+            {/* ⭐ 3. Sub-text (Replaced 'Overview' title) */}
+        <p className="text-slate-500 text-sm mt-2 dark:text-gray-400">
+            Here's your fuel consumption overview.
+        </p>
       </header>
 
       {/* --- SUMMARY CARDS --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         
-        {/* Card 1: Total Spent */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden transition hover:shadow-md">
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Spent</div>
+        {/* Card 1: Total Spent (Dark Mode classes are retained from previous step) */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden transition hover:shadow-md dark:bg-neutral-800 dark:border-neutral-700">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider dark:text-gray-400">Total Spent</div>
           {/* ⭐ CHANGE 1: Total Spent display ko 2 decimal places tak fix kiya */}
-          <div className="text-3xl font-extrabold text-slate-900 mt-2">
+          <div className="text-3xl font-extrabold text-slate-900 mt-2 dark:text-gray-50">
                 Rs. {totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-          <div className="absolute top-5 right-5 p-3 bg-emerald-50 text-emerald-500 rounded-xl">
+          <div className="absolute top-5 right-5 p-3 bg-emerald-50 text-emerald-500 rounded-xl dark:bg-emerald-900/40 dark:text-emerald-300">
             <FiDollarSign size={24} />
           </div>
         </div>
         
         {/* Card 2: Total Liters */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden transition hover:shadow-md">
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Consumed</div>
-          <div className="text-3xl font-extrabold text-slate-900 mt-2">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden transition hover:shadow-md dark:bg-neutral-800 dark:border-neutral-700">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider dark:text-gray-400">Consumed</div>
+          <div className="text-3xl font-extrabold text-slate-900 mt-2 dark:text-gray-50">
             {totalLiters.toFixed(2)} <span className="text-lg text-gray-400 font-medium">L</span>
           </div>
-          <div className="absolute top-5 right-5 p-3 bg-blue-50 text-blue-500 rounded-xl">
+          <div className="absolute top-5 right-5 p-3 bg-blue-50 text-blue-500 rounded-xl dark:bg-blue-900/40 dark:text-blue-300">
             <FiDroplet size={24} />
           </div>
         </div>
 
         {/* Card 3: Avg Rate */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden transition hover:shadow-md">
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Avg Rate</div>
-          <div className="text-3xl font-extrabold text-slate-900 mt-2">Rs. {avgPrice}</div>
-          <div className="absolute top-5 right-5 p-3 bg-orange-50 text-orange-500 rounded-xl">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden transition hover:shadow-md dark:bg-neutral-800 dark:border-neutral-700">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider dark:text-gray-400">Avg Rate</div>
+          <div className="text-3xl font-extrabold text-slate-900 mt-2 dark:text-gray-50">Rs. {avgPrice}</div>
+          <div className="absolute top-5 right-5 p-3 bg-orange-50 text-orange-500 rounded-xl dark:bg-orange-900/40 dark:text-orange-300">
             <FiTrendingUp size={24} />
           </div>
         </div>
       </div>
 
       {/* --- RECENT ACTIVITY --- */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-50 flex justify-between items-center">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden dark:bg-neutral-800 dark:border-neutral-700">
+        <div className="p-6 border-b border-gray-50 flex justify-between items-center dark:border-neutral-700">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2 dark:text-gray-50">
                 <FiClock className="text-emerald-500"/> Recent Activity
             </h3>
-            <span className="text-xs text-gray-400">Last 3 entries</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">Last 3 entries</span>
         </div>
         
         <div className="p-4">
             {entries.length === 0 ? (
-                <p className="text-center text-gray-400 py-4">No data available yet.</p>
+                <p className="text-center text-gray-400 py-4 dark:text-gray-500">No data available yet.</p>
             ) : (
                 entries.slice(0, 3).map((item, index) => (
-                    <div key={index} className="flex justify-between items-center p-3 mb-2 bg-gray-50 rounded-xl hover:bg-emerald-50 transition">
+                    <div key={index} className="flex justify-between items-center p-3 mb-2 bg-gray-50 rounded-xl hover:bg-emerald-50 transition dark:bg-neutral-700 dark:hover:bg-neutral-600">
                         <div className="flex items-center gap-3">
-                            <div className="bg-white p-2 rounded-lg text-emerald-600 shadow-sm">
+                            <div className="bg-white p-2 rounded-lg text-emerald-600 shadow-sm dark:bg-neutral-800">
                                 <FiCalendar size={18} />
                             </div>
                             <div>
-                                <p className="font-bold text-slate-700">
+                                <p className="font-bold text-slate-700 dark:text-gray-100">
                                   {parseFloat(item.liters || item.fuelAmount || item.quantity || 0).toFixed(2)} Liters
                                 </p>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-gray-400 dark:text-gray-400">
                                   {new Date(item.date || item.createdAt).toLocaleDateString()}
                                 </p>
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="font-bold text-slate-900">
+                            <p className="font-bold text-slate-900 dark:text-gray-50">
                               {/* ⭐ CHANGE 2: Recent Activity Cost display ko 2 decimal places tak fix kiya */}
                               Rs. {parseFloat(item.totalCost || item.cost || item.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
