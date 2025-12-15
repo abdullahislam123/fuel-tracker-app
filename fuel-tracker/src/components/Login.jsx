@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+// FaGasPump icon import kiya
 import { FaGasPump } from "react-icons/fa";
+// FiEye aur FiEyeOff icons import kiye
+import { FiEye, FiEyeOff } from "react-icons/fi"; 
 
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false); 
 
   const handleLogin = async () => {
     try {
@@ -31,21 +35,52 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        <div className="flex justify-center mb-6 text-slate-900">
-          <FaGasPump size={40} className="text-emerald-500" />
+    // ⭐ Register se Match: bg-slate-50
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      {/* ⭐ Register se Match: border border-gray-100 */}
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100"> 
+        
+        {/* ⭐ Register se Match: text-emerald-500 */}
+        <div className="flex justify-center mb-6 text-emerald-500">
+          <FaGasPump size={40} />
         </div>
+        
         <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">Welcome Back!</h2>
         <p className="text-center text-slate-500 mb-6">Login to manage your fuel expenses</p>
         
         <div className="space-y-4">
-          <input type="email" placeholder="Email" className="w-full p-3 border rounded-xl"
-            onChange={(e) => setFormData({...formData, email: e.target.value})} />
-          <input type="password" placeholder="Password" className="w-full p-3 border rounded-xl"
-            onChange={(e) => setFormData({...formData, password: e.target.value})} />
+          {/* Email Field */}
+          <input 
+            type="email" 
+            placeholder="Email" 
+            className="w-full p-3 border rounded-xl"
+            onChange={(e) => setFormData({...formData, email: e.target.value})} 
+          />
           
-          <button onClick={handleLogin} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg">
+          {/* ⭐ PASSWORD FIELD WITH ICON (Register se Matched) */}
+          <div className="relative">
+            <input 
+              type={showPassword ? "text" : "password"} 
+              placeholder="Password" 
+              className="w-full p-3 border rounded-xl pr-10"
+              onChange={(e) => setFormData({...formData, password: e.target.value})} 
+            />
+            {/* Eye Icon Button */}
+            <button 
+              type="button" 
+              onClick={() => setShowPassword(!showPassword)}
+              // Register se Match: hover:text-emerald-600
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-emerald-600" 
+            >
+              {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+            </button>
+          </div>
+          
+          <button 
+            onClick={handleLogin} 
+            // ⭐ Register se Match: bg-emerald-500
+            className="w-full bg-emerald-500 text-white py-3 rounded-xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/30"
+          >
             Login
           </button>
         </div>
