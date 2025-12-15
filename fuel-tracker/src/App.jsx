@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; // ⭐ useState aur useEffect add kiye
+import React, { useState, useEffect } from "react"; 
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useNavigate } from "react-router-dom";
 // FiSun, FiMoon icons import kiye
 import { FiActivity, FiPlusCircle, FiClock, FiLogOut, FiUser, FiSun, FiMoon } from "react-icons/fi"; 
@@ -14,8 +14,8 @@ import Profile from "./components/Profile";
 
 // ⭐ 1. THEME CONTEXT CREATE AUR EXPORT KAREIN
 export const ThemeContext = React.createContext({ 
-    theme: 'light', 
-    toggleTheme: () => {} 
+    theme: 'light', 
+    toggleTheme: () => {} 
 });
 
 // --- CHECK LOGIN STATUS ---
@@ -25,7 +25,6 @@ const isAuthenticated = () => {
 
 // --- SIDEBAR (Laptop) ---
 const Sidebar = () => {
-  // ⭐ Context use karne ke liye import karna padega, lekin Sidebar mein Dark mode ki zaroorat nahi hai (kyunki iska background slate-900 set hai)
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
 
@@ -37,6 +36,7 @@ const Sidebar = () => {
   };
 
   return (
+    // ⭐ Sidebar BG ko neutral-900 rakha, jo deep dark hai, lekin links mein slate-400 hi rakha
     <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-white h-screen fixed top-0 left-0 p-6 shadow-xl z-20 justify-between">
       <div>
         <div className="flex items-center gap-3 text-2xl font-bold mb-10 tracking-wide">
@@ -58,7 +58,8 @@ const Sidebar = () => {
           </Link>
         </nav>
       </div>
-      <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-slate-800 rounded-xl transition-all font-medium">
+    {/* ⭐ Sidebar Logout button mein hover BG ko neutral-800 rakha */}
+      <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-neutral-800 rounded-xl transition-all font-medium">
         <FiLogOut /> Logout
       </button>
     </aside>
@@ -67,7 +68,8 @@ const Sidebar = () => {
 
 // --- BOTTOM NAV (Mobile - Balanced Layout) ---
 const BottomNav = () => {
-  // ⭐ BottomNav mein bhi dark mode classes lagani padengi
+  // ⭐ Context se theme nikalenge
+  const { theme } = React.useContext(ThemeContext); 
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
 
@@ -79,8 +81,8 @@ const BottomNav = () => {
   };
   
   return (
-    // ⭐ BottomNav mein dark mode classes add ki hain
-    <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-between items-center px-6 py-3 z-30 shadow-[0_-5px_10px_rgba(0,0,0,0.05)] dark:bg-slate-900 dark:border-slate-800 dark:shadow-[0_-5px_10px_rgba(0,0,0,0.8)]">
+    // ⭐ BottomNav BG ko neutral-900 rakha
+    <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-between items-center px-6 py-3 z-30 shadow-[0_-5px_10px_rgba(0,0,0,0.05)] dark:bg-neutral-900 dark:border-neutral-800 dark:shadow-[0_-5px_10px_rgba(0,0,0,0.8)]">
       
       {/* 1. LEFT: Home */}
       <Link to="/" className={`flex flex-col items-center gap-1 ${isActive("/") ? "text-emerald-500" : "text-gray-400"}`}>
@@ -94,8 +96,8 @@ const BottomNav = () => {
 
       {/* 3. CENTER: Add Button (Floating) */}
       <Link to="/add" className="relative -top-6">
-        {/* ⭐ Add Button Border ko dark mode mein adjust kiya */}
-        <div className={`p-4 rounded-full shadow-xl border-4 border-gray-50 flex items-center justify-center transition-transform hover:scale-105 dark:border-slate-900 ${isActive("/add") ? "bg-emerald-600 text-white" : "bg-emerald-500 text-white"}`}>
+        {/* ⭐ Add Button Border ko neutral-900 rakha */}
+        <div className={`p-4 rounded-full shadow-xl border-4 border-gray-50 flex items-center justify-center transition-transform hover:scale-105 dark:border-neutral-900 ${isActive("/add") ? "bg-emerald-600 text-white" : "bg-emerald-500 text-white"}`}>
           <FiPlusCircle size={28} />
         </div>
       </Link>
@@ -118,14 +120,14 @@ const BottomNav = () => {
 const Layout = ({ children }) => {
   // ⭐ Context se theme nikalenge
   const { theme } = React.useContext(ThemeContext); 
-    
+    
   if (!isAuthenticated()) {
     return <Navigate to="/login" />;
   }
 
   return (
-    // ⭐ Main div mein theme state ke hisaab se background color set kiya
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'} flex flex-col md:flex-row font-sans text-gray-800 dark:text-gray-100`}>
+    // ⭐ Main div BG ko neutral-900/gray-100 rakha
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-neutral-900' : 'bg-gray-100'} flex flex-col md:flex-row font-sans text-gray-800 dark:text-gray-50`}>
       <Sidebar />
       <main className="w-full md:ml-64 p-6 pb-24 md:p-10 animate-fade-in">
         {children}
@@ -137,31 +139,31 @@ const Layout = ({ children }) => {
 
 // --- APP COMPONENT ---
 const App = () => {
-    // ⭐ 2. THEME STATE AUR TOGGLE LOGIC
-    const [theme, setTheme] = useState(
-        localStorage.getItem('theme') || 'light'
-    );
+    // ⭐ 2. THEME STATE AUR TOGGLE LOGIC
+    const [theme, setTheme] = useState(
+        localStorage.getItem('theme') || 'light'
+    );
 
-    const toggleTheme = () => {
-        setTheme((currentTheme) => {
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            localStorage.setItem('theme', newTheme);
-            return newTheme;
-        });
-    };
+    const toggleTheme = () => {
+        setTheme((currentTheme) => {
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            return newTheme;
+        });
+    };
 
-    // ⭐ 3. useEffect se 'dark' class <body> tag par lagayein/hatayein
-    useEffect(() => {
-        const body = document.body;
-        if (theme === 'dark') {
-            body.classList.add('dark');
-        } else {
-            body.classList.remove('dark');
-        }
-    }, [theme]);
-    
+    // ⭐ 3. useEffect se 'dark' class <body> tag par lagayein/hatayein
+    useEffect(() => {
+        const body = document.body;
+        if (theme === 'dark') {
+            body.classList.add('dark');
+        } else {
+            body.classList.remove('dark');
+        }
+    }, [theme]);
+    
   return (
-    // ⭐ 4. THEME CONTEXT PROVIDER se puri app ko theme state di
+    // ⭐ 4. THEME CONTEXT PROVIDER se puri app ko theme state di
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       <BrowserRouter>
         <Routes>
