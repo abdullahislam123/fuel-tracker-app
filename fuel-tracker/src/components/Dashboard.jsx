@@ -79,7 +79,7 @@ const Dashboard = () => {
       <header className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Overview</h1>
         <p className="text-slate-500 text-sm mt-1">
-          Welcome back, <span className="font-bold text-emerald-600 capitalize">{username}</span>! 👋
+          Welcome back, <span className="font-extrabold text-emerald-600 text-lg uppercase">{username}</span>! 👋
         </p>
       </header>
 
@@ -91,8 +91,8 @@ const Dashboard = () => {
           <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Spent</div>
           {/* ⭐ CHANGE 1: Total Spent display ko 2 decimal places tak fix kiya */}
           <div className="text-3xl font-extrabold text-slate-900 mt-2">
-                Rs. {totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
+                Rs. {totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
           <div className="absolute top-5 right-5 p-3 bg-emerald-50 text-emerald-500 rounded-xl">
             <FiDollarSign size={24} />
           </div>
