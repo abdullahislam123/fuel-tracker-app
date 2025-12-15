@@ -78,7 +78,7 @@ const Dashboard = () => {
       {/* --- HEADER --- */}
       <header className="mb-8">
             {/* ⭐ 1. Welcome Back Heading (Bigger size: text-4xl) */}
-        <h1 className="text-4xl font-bold text-slate-900 dark:text-gray-50">
+        <h1 className="text-4xl font-bold text-white dark:text-gray-50">
             Welcome back,
         </h1>
             {/* ⭐ 2. Username (Next Line, Even Bigger size: text-5xl, Capitalized) */}
