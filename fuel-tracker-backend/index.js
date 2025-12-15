@@ -158,6 +158,32 @@ app.put('/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// ... (Your code continues up to line 155, which is the closing bracket for app.put('/profile'))
+// Ye code app.put('/profile') ke foran baad paste kar dein.
+
+// 8. DELETE ACCOUNT (Secure) ❌
+app.delete('/profile', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // Step 1: User ki saari fuel entries delete karo
+        await FuelEntry.deleteMany({ userId: userId });
+
+        // Step 2: User ko database se delete karo
+        const deletedUser = await User.findByIdAndDelete(userId);
+
+        if (!deletedUser) {
+            return res.status(404).json({ error: "User not found" });
+        }
+        
+        // Success: Token aur session khatam karne ke liye message bhejo
+        res.status(200).json({ message: "Account and all associated data deleted successfully." });
+
+    } catch (error) {
+        console.error("Delete Account Error:", error);
+        res.status(500).json({ error: "Account deletion failed" });
+    }
+});
 
 // --- SERVER START ---
 
