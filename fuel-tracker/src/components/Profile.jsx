@@ -174,14 +174,6 @@ const Profile = () => {
           >
             <FiSave /> {loading ? "Updating..." : "Save Changes"}
           </button>
-
-          {/* Logout Button */}
-          <button 
-            onClick={handleLogout} 
-            className="w-full mt-3 bg-gray-50 text-slate-600 py-3 rounded-xl font-bold hover:bg-gray-100 transition-all flex justify-center items-center gap-2 border border-gray-200"
-          >
-            <FiLogOut /> Logout
-          </button>
         </div>
       </div>
 
