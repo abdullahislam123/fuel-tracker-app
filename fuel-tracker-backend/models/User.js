@@ -5,12 +5,9 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   
-  // 👇 YE DO NAYI FIELDS ADD KAREIN 👇
-  
-  // 1. Temporary Challenge store karne ke liye (Login/Register ke waqt)
+  // 👇 WebAuthn (Fingerprint) ke liye zaroori fields
   currentChallenge: { type: String },
 
-  // 2. Fingerprint Data store karne ke liye
   authenticators: [{
     credentialID: { type: String },
     credentialPublicKey: { type: String },
