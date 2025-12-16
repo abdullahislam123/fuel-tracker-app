@@ -111,7 +111,7 @@ const AddFuel = () => {
       <div className="flex gap-4 mt-8">
         {/* CANCEL BUTTON */}
         <button 
-          onClick={() => navigate("/dashboard")} 
+          onClick={() => navigate("/")} 
           className="flex-1 py-4 text-slate-600 font-bold bg-gray-100 rounded-xl hover:bg-gray-200 transition-all"
         >
           Cancel
