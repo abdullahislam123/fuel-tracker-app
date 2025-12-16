@@ -22,13 +22,12 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = "meraSecretKey123";
 
 // ⭐ WebAuthn Configuration
-// Localhost vs Production logic
 const rpID = process.env.RP_ID || 'localhost';
 const origin = process.env.RP_ORIGIN || 'http://localhost:3000';
 
 // Middleware
 app.use(cors({
-    origin: origin, // Allow requests from Frontend URL
+    origin: origin,
     credentials: true
 }));
 app.use(express.json());
@@ -38,7 +37,7 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected Successfully!"))
   .catch((err) => console.log("❌ DB Connection Error:", err));
 
-// --- SECURITY MIDDLEWARE (Guard) ---
+// --- SECURITY MIDDLEWARE ---
 const authenticateToken = (req, res, next) => {
   const token = req.headers['authorization'];
   if (!token) return res.status(401).json({ error: "Access Denied" });
@@ -56,7 +55,7 @@ app.get('/', (req, res) => {
   res.send('Fuel Tracker Backend is LIVE with Auth & Biometrics! 🔐');
 });
 
-// 1. REGISTER (Normal)
+// 1. REGISTER
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -64,7 +63,6 @@ app.post('/register', async (req, res) => {
     if (existingUser) return res.status(400).json({ error: "Email already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    // Note: authenticators array will be empty by default via Model
     const newUser = new User({ username, email, password: hashedPassword });
     await newUser.save();
 
@@ -74,7 +72,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// 2. LOGIN (Normal)
+// 2. LOGIN
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -92,17 +90,15 @@ app.post('/login', async (req, res) => {
 });
 
 // ======================================================
-// ⭐ BIOMETRIC / WEBAUTHN ROUTES START HERE
+// ⭐ BIOMETRIC / WEBAUTHN ROUTES (FIXED & SAFE 🛡️)
 // ======================================================
 
-// A. REGISTER FINGERPRINT (Challenge) - User must be logged in
-// A. REGISTER FINGERPRINT (Challenge) - With Crash Protection 🛡️
+// A. REGISTER FINGERPRINT (Challenge)
 app.get('/auth/register-challenge', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        // ⭐ Step 1: Safe Array lo
         const userAuthenticators = user.authenticators || [];
 
         const options = await generateRegistrationOptions({
@@ -110,17 +106,14 @@ app.get('/auth/register-challenge', authenticateToken, async (req, res) => {
             rpID: rpID,
             userID: new Uint8Array(Buffer.from(user._id.toString())),
             userName: user.email,
-            
-            // ⭐ Step 2: FILTER lagaya (Sirf wohi bhejo jinka ID maujood hai)
-            // Is se 'undefined' wala crash khatam ho jayega
+            // ⭐ SAFE FILTER: Invalid data remove kiya
             excludeCredentials: userAuthenticators
-                .filter(auth => auth.credentialID) // 👈 Ye Line Zaroori Hai
+                .filter(auth => auth.credentialID) 
                 .map(authenticator => ({
                     id: authenticator.credentialID,
                     type: 'public-key',
                     transports: authenticator.transports,
                 })),
-            
             authenticatorSelection: {
                 residentKey: 'preferred',
                 userVerification: 'preferred',
@@ -133,18 +126,18 @@ app.get('/auth/register-challenge', authenticateToken, async (req, res) => {
 
         res.json(options);
     } catch (error) {
-        console.error("Challenge Gen Error:", error);
+        console.error("Reg Challenge Error:", error);
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
 
-// B. REGISTER FINGERPRINT (Verify) - User must be logged in
+// B. REGISTER FINGERPRINT (Verify)
 app.post('/auth/register-verify', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        const { body } = req; // This is the response from frontend
+        const { body } = req;
 
         const verification = await verifyRegistrationResponse({
             response: body,
@@ -156,18 +149,16 @@ app.post('/auth/register-verify', authenticateToken, async (req, res) => {
         if (verification.verified) {
             const { registrationInfo } = verification;
             
-            // Save the new fingerprint to user's authenticators array
             const newAuthenticator = {
                 credentialID: registrationInfo.credentialID,
                 credentialPublicKey: registrationInfo.credentialPublicKey,
                 counter: registrationInfo.counter,
-                transports: body.response.transports, // Save transports if available
+                transports: body.response.transports,
             };
 
             if (!user.authenticators) user.authenticators = [];
             user.authenticators.push(newAuthenticator);
             
-            // Clear challenge
             user.currentChallenge = undefined; 
             await user.save();
 
@@ -181,21 +172,23 @@ app.post('/auth/register-verify', authenticateToken, async (req, res) => {
     }
 });
 
-// C. LOGIN FINGERPRINT (Challenge) - Public Route (Requires Email)
+// C. LOGIN FINGERPRINT (Challenge) - ⚠️ ISME FIX KIYA HAI
 app.post('/auth/login-challenge', async (req, res) => {
     try {
         const { email } = req.body;
         const user = await User.findOne({ email });
         
-        // If user not found, or has no fingerprints registered
         if (!user || !user.authenticators || user.authenticators.length === 0) {
             return res.status(400).json({ error: 'User not found or no biometrics registered' });
         }
 
+        // ⭐ SAFE FILTER: Login ke waqt bhi check karo ke ID maujood hai
+        const safeAuthenticators = user.authenticators.filter(auth => auth.credentialID);
+
         const options = await generateAuthenticationOptions({
             rpID: rpID,
-            // Allow any of the user's registered fingerprints
-            allowCredentials: user.authenticators.map(authenticator => ({
+            // ⭐ Yahan pehle crash ho raha tha, ab safe hai
+            allowCredentials: safeAuthenticators.map(authenticator => ({
                 id: authenticator.credentialID,
                 type: 'public-key',
                 transports: authenticator.transports,
@@ -203,27 +196,26 @@ app.post('/auth/login-challenge', async (req, res) => {
             userVerification: 'preferred',
         });
 
-        // Save challenge
         user.currentChallenge = options.challenge;
         await user.save();
 
         res.json(options);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Could not generate login challenge' });
+        console.error("Login Challenge Error:", error);
+        res.status(500).json({ error: 'Could not generate login challenge', details: error.message });
     }
 });
 
-// D. LOGIN FINGERPRINT (Verify) - Public Route
+// D. LOGIN FINGERPRINT (Verify)
 app.post('/auth/login-verify', async (req, res) => {
     try {
-        const { email, body } = req.body; // body is the WebAuthn response
+        const { email, body } = req.body;
         const user = await User.findOne({ email });
 
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        // Find the authenticator used
-        const authenticator = user.authenticators.find(
+        // Safe Find
+        const authenticator = (user.authenticators || []).find(
             auth => auth.credentialID === body.id
         );
 
@@ -246,12 +238,10 @@ app.post('/auth/login-verify', async (req, res) => {
         if (verification.verified) {
             const { authenticationInfo } = verification;
             
-            // Update counter
             authenticator.counter = authenticationInfo.newCounter;
             user.currentChallenge = undefined;
             await user.save();
 
-            // ⭐ GENERATE JWT TOKEN (Same as password login)
             const token = jwt.sign({ id: user._id }, JWT_SECRET);
             
             res.json({ verified: true, token, username: user.username, email: user.email, userId: user._id });
@@ -265,10 +255,8 @@ app.post('/auth/login-verify', async (req, res) => {
 });
 
 // ======================================================
-// WEBAUTHN ROUTES END
-// ======================================================
 
-// 3. ADD ENTRY (Secure)
+// 3. ADD ENTRY
 app.post('/add', authenticateToken, async (req, res) => {
   try {
     const newEntry = new FuelEntry({ ...req.body, userId: req.user.id });
@@ -279,7 +267,7 @@ app.post('/add', authenticateToken, async (req, res) => {
   }
 });
 
-// 4. GET HISTORY (Secure)
+// 4. GET HISTORY
 app.get('/history', authenticateToken, async (req, res) => {
   try {
     const entries = await FuelEntry.find({ userId: req.user.id }).sort({ createdAt: -1 });
@@ -289,7 +277,7 @@ app.get('/history', authenticateToken, async (req, res) => {
   }
 });
 
-// 5. UPDATE ENTRY (Secure)
+// 5. UPDATE ENTRY
 app.put('/update/:id', authenticateToken, async (req, res) => {
   try {
     const updatedEntry = await FuelEntry.findOneAndUpdate(
@@ -297,33 +285,29 @@ app.put('/update/:id', authenticateToken, async (req, res) => {
       req.body,
       { new: true }
     );
-    
     if (!updatedEntry) return res.status(404).json({ error: "Entry not found or unauthorized" });
-    
     res.json({ message: "Updated successfully", data: updatedEntry });
   } catch (error) {
     res.status(500).json({ error: "Update failed" });
   }
 });
 
-// 6. DELETE ENTRY (Secure)
+// 6. DELETE ENTRY
 app.delete('/delete/:id', authenticateToken, async (req, res) => {
   try {
     const deletedEntry = await FuelEntry.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
     if (!deletedEntry) return res.status(404).json({ error: "Entry not found or unauthorized" });
-    
     res.status(200).json({ message: "Deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: "Delete failed" });
   }
 });
 
-// 7. UPDATE PROFILE (Secure)
+// 7. UPDATE PROFILE
 app.put('/profile', authenticateToken, async (req, res) => {
   try {
     const { username, email, password } = req.body;
     const userId = req.user.id;
-
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -332,55 +316,35 @@ app.put('/profile', authenticateToken, async (req, res) => {
       if (existingUser) return res.status(400).json({ error: "Email already taken" });
       user.email = email;
     }
-
     if (username) user.username = username;
-
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
       user.password = hashedPassword;
     }
-
     await user.save();
-
     res.json({ message: "Profile Updated Successfully!", user: { username: user.username, email: user.email } });
-
   } catch (error) {
-    console.log(error);
     res.status(500).json({ error: "Update failed" });
   }
 });
 
-// 8. DELETE ACCOUNT (Secure)
+// 8. DELETE ACCOUNT
 app.delete('/profile', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
-
-        // Step 1: User ki saari fuel entries delete karo
         await FuelEntry.deleteMany({ userId: userId });
-
-        // Step 2: User ko database se delete karo
         const deletedUser = await User.findByIdAndDelete(userId);
-
-        if (!deletedUser) {
-            return res.status(404).json({ error: "User not found" });
-        }
-        
-        res.status(200).json({ message: "Account and all associated data deleted successfully." });
-
+        if (!deletedUser) return res.status(404).json({ error: "User not found" });
+        res.status(200).json({ message: "Account deleted successfully." });
     } catch (error) {
-        console.error("Delete Account Error:", error);
         res.status(500).json({ error: "Account deletion failed" });
     }
 });
 
 // --- SERVER START ---
-
-// Localhost ke liye
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
-
-// Vercel ke liye
 module.exports = app;
