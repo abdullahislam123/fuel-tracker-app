@@ -1,237 +1,242 @@
-import React, { useState, useEffect, useContext } from "react"; 
-import { FiUser, FiMail, FiLock, FiSave, FiLogOut, FiTrash2, FiAlertTriangle, FiSun, FiMoon } from "react-icons/fi"; 
+import React, { useState, useEffect } from "react"; 
+import { FiUser, FiMail, FiLock, FiSave, FiLogOut, FiTrash2, FiAlertTriangle } from "react-icons/fi"; 
+// ⭐ Fingerprint Icon Import
+import { MdFingerprint } from "react-icons/md"; 
 import { useNavigate } from "react-router-dom"; 
-import { ThemeContext } from '../App'; 
 
 const Profile = () => {
-    // ⭐ Context se theme state aur toggle function lein
-    const { theme, toggleTheme } = useContext(ThemeContext);
-    
-  const [formData, setFormData] = useState({ username: "", email: "", password: "" });
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate(); 
-  
-  // ⚠️ IMPORTANT: Aapka Live Backend Link yahan hona chahiye
-  const API_URL = "https://fuel-tracker-api.vercel.app"; 
+  // ❌ ThemeContext hata diya taaki crash na ho
 
-  // Page load hote hi LocalStorage se purana data dikhao
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user) {
-      setFormData({ 
-        username: user.username || "", 
-        email: user.email || "", 
-        password: "" 
-      });
-    } else {
-        navigate("/login");
-    }
-  }, [navigate]);
+  const [formData, setFormData] = useState({ username: "", email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  
+  // ⭐ Biometric State
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  
+  const navigate = useNavigate(); 
+  
+  // ⚠️ API Link
+  const API_URL = "https://fuel-tracker-api.vercel.app"; 
 
-  const handleUpdate = async () => {
-    setLoading(true);
-    const token = localStorage.getItem("token");
+  // Page load hote hi LocalStorage se data aur Settings dikhao
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    
+    // ⭐ Biometric setting check
+    const isBioEnabled = localStorage.getItem("biometricEnabled") === "true";
+    setBiometricEnabled(isBioEnabled);
 
-    try {
-      const dataToSend = {};
-      if (formData.username) dataToSend.username = formData.username;
-      if (formData.email) dataToSend.email = formData.email;
-      if (formData.password) dataToSend.password = formData.password;
+    if (user) {
+      setFormData({ 
+        username: user.username || "", 
+        email: user.email || "", 
+        password: "" 
+      });
+    } else {
+        navigate("/login");
+    }
+  }, [navigate]);
 
-      const res = await fetch(`${API_URL}/profile`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': token 
-        },
-        body: JSON.stringify(dataToSend) 
-      });
+  // ⭐ Biometric Toggle Function
+  const toggleBiometric = () => {
+    const newState = !biometricEnabled;
+    setBiometricEnabled(newState);
+    localStorage.setItem("biometricEnabled", newState);
+  };
 
-      const data = await res.json();
+  const handleUpdate = async () => {
+    setLoading(true);
+    const token = localStorage.getItem("token");
 
-      if (res.ok) {
-        localStorage.clear();
-        alert("Profile Updated! Please Login again.");
-        navigate("/login");
-      } else {
-        alert(data.error || "Update failed.");
-      }
-    } catch (error) {
-      alert("Server Error");
-    } finally {
-      setLoading(false);
-    }
-  };
+    try {
+      const dataToSend = {};
+      if (formData.username) dataToSend.username = formData.username;
+      if (formData.email) dataToSend.email = formData.email;
+      if (formData.password) dataToSend.password = formData.password;
 
-  // --- LOGOUT FUNCTION ---
-  const handleLogout = () => {
-    if(window.confirm("Are you sure you want to logout?")) {
-      localStorage.clear();
-      navigate("/login");
-    }
-  };
+      const res = await fetch(`${API_URL}/profile`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': token 
+        },
+        body: JSON.stringify(dataToSend) 
+      });
 
-  // --- NEW: DELETE ACCOUNT FUNCTION ---
-  const handleDeleteAccount = async () => {
-    const confirmDelete = window.confirm(
-      "ARE YOU ABSOLUTELY SURE? This action is permanent. All your data will be immediately deleted from our servers, and there is no recovery option in any case."
-    );
+      const data = await res.json();
 
-    if (!confirmDelete) return;
+      if (res.ok) {
+        localStorage.clear();
+        alert("Profile Updated! Please Login again.");
+        navigate("/login");
+      } else {
+        alert(data.error || "Update failed.");
+      }
+    } catch (error) {
+      alert("Server Error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const token = localStorage.getItem("token");
+  // --- DELETE ACCOUNT FUNCTION ---
+  const handleDeleteAccount = async () => {
+    const confirmDelete = window.confirm(
+      "ARE YOU ABSOLUTELY SURE? This action is permanent. All your data will be immediately deleted from our servers, and there is no recovery option in any case."
+    );
 
-    try {
-      const res = await fetch(`${API_URL}/profile`, {
-        method: 'DELETE',
-        headers: { 'Authorization': token }
-      });
+    if (!confirmDelete) return;
 
-      if (res.ok) {
-        localStorage.clear();
-        alert("Account deleted successfully! You will now be redirected to the login page.");
-        navigate('/login');
-      } else {
-        const data = await res.json();
-        alert(data.error || "Failed to delete account.");
-      }
+    const token = localStorage.getItem("token");
 
-    } catch (error) {
-      console.error("Deletion Error:", error);
-      alert("A server error occurred during deletion.");
-    }
-  };
+    try {
+      const res = await fetch(`${API_URL}/profile`, {
+        method: 'DELETE',
+        headers: { 'Authorization': token }
+      });
 
-  return (
-    <div className="max-w-md mx-auto mt-4 md:mt-10 mb-24"> 
-        
-        {/* ⭐ 1. DARK MODE TOGGLE SECTION (TOP) */}
-        <div className="bg-white p-5 mb-6 rounded-2xl shadow-sm border border-gray-100 dark:bg-neutral-800 dark:border-neutral-700"> {/* ⭐ Updated to neutral-800/700 */}
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <span className="p-3 rounded-full text-yellow-500 bg-yellow-100 dark:bg-neutral-700 dark:text-yellow-400"> {/* ⭐ Updated to neutral-700 */}
-                        {theme === 'dark' ? <FiMoon size={20} /> : <FiSun size={20} />}
-                    </span>
-                    <h3 className="text-md font-bold text-slate-800 dark:text-gray-50"> {/* ⭐ Updated to gray-50 (soft white) */}
-                        {theme === 'dark' ? "Dark Mode is ON" : "Light Mode is ON"}
-                    </h3>
-                </div>
-                
-                {/* ⭐ TOGGLE SWITCH */}
-                <button 
-                    onClick={toggleTheme} 
-                    className={`relative w-14 h-8 flex items-center rounded-full transition-colors duration-300 ${
-                        theme === 'dark' ? 'bg-emerald-500' : 'bg-gray-300'
-                    }`}
-                    aria-label="Toggle Dark Mode"
-                >
-                    <span 
-                        className={`block w-6 h-6 rounded-full bg-white shadow transform transition-transform duration-300 ${
-                            theme === 'dark' ? 'translate-x-7' : 'translate-x-1'
-                        }`}
-                    />
-                </button>
-            </div>
-        </div>
-        {/* --- END DARK MODE TOGGLE --- */}
-        
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 dark:bg-neutral-800 dark:border-neutral-700"> {/* ⭐ Updated to neutral-800/700 */}
-        <div className="flex items-center gap-3 mb-8 border-b border-gray-100 pb-4 dark:border-neutral-700"> {/* ⭐ Updated border to neutral-700 */}
-          <div className="bg-emerald-100 p-3 rounded-full text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300"> 
-            <FiUser size={24} />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-800 dark:text-gray-50">Edit Profile</h2> {/* ⭐ Updated text to gray-50 */}
-            <p className="text-slate-500 text-sm dark:text-gray-400">Update your account details</p> {/* ⭐ Updated text to gray-400 */}
-          </div>
-        </div>
+      if (res.ok) {
+        localStorage.clear();
+        alert("Account deleted successfully! You will now be redirected to the login page.");
+        navigate('/login');
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete account.");
+      }
 
-        <div className="space-y-5">
-          {/* Username */}
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 dark:text-gray-200">New Username</label> 
-            <div className="relative">
-              <FiUser className="absolute left-3 top-3.5 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="Enter new username"
-                value={formData.username}
-                onChange={(e) => setFormData({...formData, username: e.target.value})}
-                // ⭐ Updated to neutral-700/600
-                className="w-full pl-10 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-700 dark:border-neutral-600 dark:text-gray-50" 
-              />
-            </div>
-          </div>
+    } catch (error) {
+      console.error("Deletion Error:", error);
+      alert("A server error occurred during deletion.");
+    }
+  };
 
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 dark:text-gray-200">New Email</label> 
-            <div className="relative">
-              <FiMail className="absolute left-3 top-3.5 text-gray-400" />
-              <input 
-                type="email" 
-                placeholder="Enter new email"
-                value={formData.email} 
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                // ⭐ Updated to neutral-700/600
-                className="w-full pl-10 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-700 dark:border-neutral-600 dark:text-gray-50" 
-              />
-            </div>
-          </div>
+  return (
+    <div className="max-w-md mx-auto mt-4 md:mt-10 mb-24"> 
+        
+        {/* ⭐ 1. SETTINGS CARD (Only Biometric) */}
+        <div className="bg-white p-5 mb-6 rounded-2xl shadow-sm border border-gray-100">
+            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Security Settings</h2>
 
-          {/* Password */}
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 dark:text-gray-200">New Password</label> 
-            <div className="relative">
-              <FiLock className="absolute left-3 top-3.5 text-gray-400" />
-              <input 
-                type="password" 
-                placeholder="Leave empty to keep current"
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                // ⭐ Updated to neutral-700/600
-                className="w-full pl-10 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-700 dark:border-neutral-600 dark:text-gray-50" 
-              />
-            </div>
-            <p className="text-xs text-gray-400 mt-1 ml-1 dark:text-gray-400">Only enter if you want to change it.</p> {/* ⭐ Updated text to gray-400 */}
-          </div>
+            {/* --- BIOMETRIC TOGGLE --- */}
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                    <span className={`p-3 rounded-full ${biometricEnabled ? 'text-emerald-600 bg-emerald-100' : 'text-gray-500 bg-gray-100'}`}>
+                        <MdFingerprint size={20} />
+                    </span>
+                    <div>
+                        <h3 className="text-md font-bold text-slate-800">Biometric Login</h3>
+                        <p className="text-xs text-slate-500">Enable fingerprint access</p>
+                    </div>
+                </div>
+                
+                <button 
+                    onClick={toggleBiometric} 
+                    className={`relative w-12 h-7 flex items-center rounded-full transition-colors duration-300 ${
+                        biometricEnabled ? 'bg-emerald-500' : 'bg-gray-300'
+                    }`}
+                >
+                    <span 
+                        className={`block w-5 h-5 rounded-full bg-white shadow transform transition-transform duration-300 ${
+                            biometricEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                    />
+                </button>
+            </div>
+        </div>
+        
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <div className="flex items-center gap-3 mb-8 border-b border-gray-100 pb-4">
+          <div className="bg-emerald-100 p-3 rounded-full text-emerald-600"> 
+            <FiUser size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">Edit Profile</h2>
+            <p className="text-slate-500 text-sm">Update your account details</p>
+          </div>
+        </div>
 
-          {/* Update Button */}
-          <button 
-            onClick={handleUpdate} 
-            disabled={loading}
-            className="w-full mt-4 bg-emerald-500 text-white py-3 rounded-xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/30 flex justify-center items-center gap-2"
-          >
-            <FiSave /> {loading ? "Updating..." : "Save Changes"}
-          </button>
-        </div>
-      </div>
+        <div className="space-y-5">
+          {/* Username */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">New Username</label> 
+            <div className="relative">
+              <FiUser className="absolute left-3 top-3.5 text-gray-400" />
+              <input 
+                type="text" 
+                placeholder="Enter new username"
+                value={formData.username}
+                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                className="w-full pl-10 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+              />
+            </div>
+          </div>
 
-      {/* --- DANGER ZONE (Delete Account) --- */}
-      <div className="mt-8 p-6 bg-red-50 border border-red-200 rounded-2xl shadow-sm dark:bg-red-900/20 dark:border-red-800"> 
-        <div className="flex items-center mb-4">
-          <FiAlertTriangle className="text-red-500 mr-3" size={24} />
-          <h2 className="text-lg font-bold text-red-700 dark:text-red-400">Danger Zone</h2> 
-        </div>
-        
-        {/* ⭐ NEW STRONG WARNING ADDED HERE */}
-        <p className="text-sm font-semibold text-red-800 mb-3 p-2 bg-red-100 rounded-lg border-l-4 border-red-500 dark:bg-red-900/40 dark:text-red-300 dark:border-red-600"> 
-           ⚠️ ACCOUNT DELETION IS PERMANENT. Once deleted, your data cannot be recovered in any case.
-        </p>
-        
-        <p className="text-sm text-red-600 mb-4 dark:text-red-500"> 
-          Deleting your account will permanently erase your profile and all your saved fuel entries from our servers.
-        </p>
-        <button 
-          onClick={handleDeleteAccount}
-          className="flex items-center justify-center w-full px-4 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
-        >
-          <FiTrash2 className="mr-2" /> Delete Account Permanently
-        </button>
-      </div>
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">New Email</label> 
+            <div className="relative">
+              <FiMail className="absolute left-3 top-3.5 text-gray-400" />
+              <input 
+                type="email" 
+                placeholder="Enter new email"
+                value={formData.email} 
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                className="w-full pl-10 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+              />
+            </div>
+          </div>
 
-    </div>
-  );
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">New Password</label> 
+            <div className="relative">
+              <FiLock className="absolute left-3 top-3.5 text-gray-400" />
+              <input 
+                type="password" 
+                placeholder="Leave empty to keep current"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                className="w-full pl-10 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1 ml-1">Only enter if you want to change it.</p>
+          </div>
+
+          {/* Update Button */}
+          <button 
+            onClick={handleUpdate} 
+            disabled={loading}
+            className="w-full mt-4 bg-emerald-500 text-white py-3 rounded-xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/30 flex justify-center items-center gap-2"
+          >
+            <FiSave /> {loading ? "Updating..." : "Save Changes"}
+          </button>
+        </div>
+      </div>
+
+      {/* --- DANGER ZONE (Delete Account) --- */}
+      <div className="mt-8 p-6 bg-red-50 border border-red-200 rounded-2xl shadow-sm"> 
+        <div className="flex items-center mb-4">
+          <FiAlertTriangle className="text-red-500 mr-3" size={24} />
+          <h2 className="text-lg font-bold text-red-700">Danger Zone</h2> 
+        </div>
+        
+        <p className="text-sm font-semibold text-red-800 mb-3 p-2 bg-red-100 rounded-lg border-l-4 border-red-500"> 
+            ⚠️ ACCOUNT DELETION IS PERMANENT. Once deleted, your data cannot be recovered in any case.
+        </p>
+        
+        <p className="text-sm text-red-600 mb-4"> 
+          Deleting your account will permanently erase your profile and all your saved fuel entries from our servers.
+        </p>
+        <button 
+          onClick={handleDeleteAccount}
+          className="flex items-center justify-center w-full px-4 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
+        >
+          <FiTrash2 className="mr-2" /> Delete Account Permanently
+        </button>
+      </div>
+
+    </div>
+  );
 };
 
 export default Profile;

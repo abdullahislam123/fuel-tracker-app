@@ -1,9 +1,23 @@
 const mongoose = require('mongoose');
 
-const UserSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
-  email: { type: String, required: true, unique: true }, // Email unique honi chahiye
-  password: { type: String, required: true }
-});
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  
+  // 👇 YE DO NAYI FIELDS ADD KAREIN 👇
+  
+  // 1. Temporary Challenge store karne ke liye (Login/Register ke waqt)
+  currentChallenge: { type: String },
 
-module.exports = mongoose.model('User', UserSchema);
+  // 2. Fingerprint Data store karne ke liye
+  authenticators: [{
+    credentialID: { type: String },
+    credentialPublicKey: { type: String },
+    counter: { type: Number },
+    transports: [{ type: String }]
+  }]
+  
+}, { timestamps: true });
+
+module.exports = mongoose.model('User', userSchema);

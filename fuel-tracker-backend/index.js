@@ -9,13 +9,28 @@ require('dotenv').config();
 const FuelEntry = require('./models/FuelEntry');
 const User = require('./models/User');
 
+// ⭐ WebAuthn Library Imports
+const {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} = require('@simplewebauthn/server');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = "meraSecretKey123";
 
+// ⭐ WebAuthn Configuration
+// Localhost vs Production logic
+const rpID = process.env.RP_ID || 'localhost';
+const origin = process.env.RP_ORIGIN || 'http://localhost:3000';
+
 // Middleware
-// Sab se zaroori change: CORS sabko allow karega
-app.use(cors());
+app.use(cors({
+    origin: origin, // Allow requests from Frontend URL
+    credentials: true
+}));
 app.use(express.json());
 
 // --- DATABASE CONNECT ---
@@ -38,10 +53,10 @@ const authenticateToken = (req, res, next) => {
 // --- ROUTES ---
 
 app.get('/', (req, res) => {
-  res.send('Fuel Tracker Backend is LIVE with Auth! 🔐');
+  res.send('Fuel Tracker Backend is LIVE with Auth & Biometrics! 🔐');
 });
 
-// 1. REGISTER
+// 1. REGISTER (Normal)
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -49,6 +64,7 @@ app.post('/register', async (req, res) => {
     if (existingUser) return res.status(400).json({ error: "Email already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    // Note: authenticators array will be empty by default via Model
     const newUser = new User({ username, email, password: hashedPassword });
     await newUser.save();
 
@@ -58,7 +74,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// 2. LOGIN
+// 2. LOGIN (Normal)
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -69,11 +85,180 @@ app.post('/login', async (req, res) => {
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET);
-    res.json({ token, username: user.username, userId: user._id });
+    res.json({ token, username: user.username, email: user.email, userId: user._id });
   } catch (error) {
     res.status(500).json({ error: "Login failed" });
   }
 });
+
+// ======================================================
+// ⭐ BIOMETRIC / WEBAUTHN ROUTES START HERE
+// ======================================================
+
+// A. REGISTER FINGERPRINT (Challenge) - User must be logged in
+app.get('/auth/register-challenge', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const options = await generateRegistrationOptions({
+            rpName: 'Fuel Tracker App',
+            rpID: rpID,
+            userID: user._id.toString(),
+            userName: user.email,
+            // Don't allow user to register same fingerprint twice
+            excludeCredentials: user.authenticators?.map(authenticator => ({
+                id: authenticator.credentialID,
+                type: 'public-key',
+                transports: authenticator.transports,
+            })),
+            authenticatorSelection: {
+                residentKey: 'preferred',
+                userVerification: 'preferred',
+                authenticatorAttachment: 'platform', // Uses built-in scanner (TouchID/FaceID)
+            },
+        });
+
+        // Save challenge to DB to verify later
+        user.currentChallenge = options.challenge;
+        await user.save();
+
+        res.json(options);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Something went wrong generating challenge' });
+    }
+});
+
+// B. REGISTER FINGERPRINT (Verify) - User must be logged in
+app.post('/auth/register-verify', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const { body } = req; // This is the response from frontend
+
+        const verification = await verifyRegistrationResponse({
+            response: body,
+            expectedChallenge: user.currentChallenge,
+            expectedOrigin: origin,
+            expectedRPID: rpID,
+        });
+
+        if (verification.verified) {
+            const { registrationInfo } = verification;
+            
+            // Save the new fingerprint to user's authenticators array
+            const newAuthenticator = {
+                credentialID: registrationInfo.credentialID,
+                credentialPublicKey: registrationInfo.credentialPublicKey,
+                counter: registrationInfo.counter,
+                transports: body.response.transports, // Save transports if available
+            };
+
+            if (!user.authenticators) user.authenticators = [];
+            user.authenticators.push(newAuthenticator);
+            
+            // Clear challenge
+            user.currentChallenge = undefined; 
+            await user.save();
+
+            res.json({ verified: true });
+        } else {
+            res.status(400).json({ verified: false, error: 'Verification failed' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error during verification' });
+    }
+});
+
+// C. LOGIN FINGERPRINT (Challenge) - Public Route (Requires Email)
+app.post('/auth/login-challenge', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        
+        // If user not found, or has no fingerprints registered
+        if (!user || !user.authenticators || user.authenticators.length === 0) {
+            return res.status(400).json({ error: 'User not found or no biometrics registered' });
+        }
+
+        const options = await generateAuthenticationOptions({
+            rpID: rpID,
+            // Allow any of the user's registered fingerprints
+            allowCredentials: user.authenticators.map(authenticator => ({
+                id: authenticator.credentialID,
+                type: 'public-key',
+                transports: authenticator.transports,
+            })),
+            userVerification: 'preferred',
+        });
+
+        // Save challenge
+        user.currentChallenge = options.challenge;
+        await user.save();
+
+        res.json(options);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Could not generate login challenge' });
+    }
+});
+
+// D. LOGIN FINGERPRINT (Verify) - Public Route
+app.post('/auth/login-verify', async (req, res) => {
+    try {
+        const { email, body } = req.body; // body is the WebAuthn response
+        const user = await User.findOne({ email });
+
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // Find the authenticator used
+        const authenticator = user.authenticators.find(
+            auth => auth.credentialID === body.id
+        );
+
+        if (!authenticator) {
+            return res.status(400).json({ error: 'Authenticator not found' });
+        }
+
+        const verification = await verifyAuthenticationResponse({
+            response: body,
+            expectedChallenge: user.currentChallenge,
+            expectedOrigin: origin,
+            expectedRPID: rpID,
+            authenticator: {
+                credentialID: authenticator.credentialID,
+                credentialPublicKey: authenticator.credentialPublicKey,
+                counter: authenticator.counter,
+            },
+        });
+
+        if (verification.verified) {
+            const { authenticationInfo } = verification;
+            
+            // Update counter
+            authenticator.counter = authenticationInfo.newCounter;
+            user.currentChallenge = undefined;
+            await user.save();
+
+            // ⭐ GENERATE JWT TOKEN (Same as password login)
+            const token = jwt.sign({ id: user._id }, JWT_SECRET);
+            
+            res.json({ verified: true, token, username: user.username, email: user.email, userId: user._id });
+        } else {
+            res.status(400).json({ verified: false, error: 'Biometric verification failed' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error during login verification' });
+    }
+});
+
+// ======================================================
+// WEBAUTHN ROUTES END
+// ======================================================
 
 // 3. ADD ENTRY (Secure)
 app.post('/add', authenticateToken, async (req, res) => {
@@ -125,8 +310,7 @@ app.delete('/delete/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// 7. UPDATE PROFILE (Secure) 🛠️
-// (Isko yahan hona chahiye, export se pehle)
+// 7. UPDATE PROFILE (Secure)
 app.put('/profile', authenticateToken, async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -158,10 +342,7 @@ app.put('/profile', authenticateToken, async (req, res) => {
   }
 });
 
-// ... (Your code continues up to line 155, which is the closing bracket for app.put('/profile'))
-// Ye code app.put('/profile') ke foran baad paste kar dein.
-
-// 8. DELETE ACCOUNT (Secure) ❌
+// 8. DELETE ACCOUNT (Secure)
 app.delete('/profile', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
@@ -176,7 +357,6 @@ app.delete('/profile', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
         
-        // Success: Token aur session khatam karne ke liye message bhejo
         res.status(200).json({ message: "Account and all associated data deleted successfully." });
 
     } catch (error) {
@@ -194,5 +374,5 @@ if (require.main === module) {
   });
 }
 
-// Vercel ke liye (Ye line sabse aakhir mein honi chahiye)
+// Vercel ke liye
 module.exports = app;
