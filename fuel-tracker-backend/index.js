@@ -96,28 +96,31 @@ app.post('/login', async (req, res) => {
 // ======================================================
 
 // A. REGISTER FINGERPRINT (Challenge) - User must be logged in
+// A. REGISTER FINGERPRINT (Challenge) - With Crash Protection 🛡️
 app.get('/auth/register-challenge', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        // ⭐ Fix 1: Agar authenticators undefined hai, to empty array [] use karo
-        // Is se "Cannot read properties of undefined" wala error khatam ho jayega
+        // ⭐ Step 1: Safe Array lo
         const userAuthenticators = user.authenticators || [];
 
         const options = await generateRegistrationOptions({
             rpName: 'Fuel Tracker App',
             rpID: rpID,
-            // ⭐ Fix 2: UserID ko Buffer mein convert (Jo aapne pehle kiya tha)
             userID: new Uint8Array(Buffer.from(user._id.toString())),
             userName: user.email,
             
-            // ⭐ Fix 3: Safe authenticators variable use karein
-            excludeCredentials: userAuthenticators.map(authenticator => ({
-                id: authenticator.credentialID,
-                type: 'public-key',
-                transports: authenticator.transports,
-            })),
+            // ⭐ Step 2: FILTER lagaya (Sirf wohi bhejo jinka ID maujood hai)
+            // Is se 'undefined' wala crash khatam ho jayega
+            excludeCredentials: userAuthenticators
+                .filter(auth => auth.credentialID) // 👈 Ye Line Zaroori Hai
+                .map(authenticator => ({
+                    id: authenticator.credentialID,
+                    type: 'public-key',
+                    transports: authenticator.transports,
+                })),
+            
             authenticatorSelection: {
                 residentKey: 'preferred',
                 userVerification: 'preferred',
@@ -130,8 +133,7 @@ app.get('/auth/register-challenge', authenticateToken, async (req, res) => {
 
         res.json(options);
     } catch (error) {
-        console.error("Challenge Error:", error);
-        // Error details bhej rahe hain taaki debug aasan ho
+        console.error("Challenge Gen Error:", error);
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
