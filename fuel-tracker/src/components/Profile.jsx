@@ -102,7 +102,8 @@ const Profile = () => {
                type="text" 
                value={formData.username}
                onChange={(e) => setFormData({...formData, username: e.target.value})}
-               className="w-full p-3 border border-gray-200 rounded-xl" 
+               // ⭐ FIX: 'text-slate-800' (Dark Text) aur 'bg-white' add kiya
+               className="w-full p-3 border border-gray-200 rounded-xl text-slate-800 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" 
             />
           </div>
 
@@ -112,7 +113,8 @@ const Profile = () => {
                type="email" 
                value={formData.email} 
                onChange={(e) => setFormData({...formData, email: e.target.value})}
-               className="w-full p-3 border border-gray-200 rounded-xl" 
+               // ⭐ FIX: Yahan bhi Dark Text
+               className="w-full p-3 border border-gray-200 rounded-xl text-slate-800 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" 
             />
           </div>
 
@@ -123,14 +125,15 @@ const Profile = () => {
                placeholder="Leave empty to keep current"
                value={formData.password}
                onChange={(e) => setFormData({...formData, password: e.target.value})}
-               className="w-full p-3 border border-gray-200 rounded-xl" 
+               // ⭐ FIX: Yahan bhi Dark Text
+               className="w-full p-3 border border-gray-200 rounded-xl text-slate-800 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" 
              />
           </div>
 
           <button 
             onClick={handleUpdate} 
             disabled={loading}
-            className="w-full mt-4 bg-emerald-500 text-white py-3 rounded-xl font-bold hover:bg-emerald-600"
+            className="w-full mt-4 bg-emerald-500 text-white py-3 rounded-xl font-bold hover:bg-emerald-600 shadow-lg shadow-emerald-500/30"
           >
             <FiSave className="inline mr-2"/> {loading ? "Updating..." : "Save Changes"}
           </button>
