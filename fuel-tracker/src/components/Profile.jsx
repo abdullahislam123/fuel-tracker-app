@@ -84,16 +84,12 @@ const Profile = () => {
             setBiometricEnabled(false);
         }
 
-    } catch (error) {
-        console.error(error);
-        // Agar user cancel kar de ya error aye
-        if (error.name === 'NotAllowedError') {
-            alert("You cancelled the fingerprint scan.");
-        } else {
-            alert("Biometric Registration Failed not allowed or supported.");
-        }
+    } 
+    catch (error) {
+        alert(`Error Name: ${error.name}\nMessage: ${error.message}`);
         setBiometricEnabled(false);
-    } finally {
+    }
+    finally {
         setBioLoading(false);
     }
   };
