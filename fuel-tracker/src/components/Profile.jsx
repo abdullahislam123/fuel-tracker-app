@@ -1,28 +1,26 @@
 import React, { useState, useEffect } from "react"; 
-import { FiUser, FiMail, FiLock, FiSave, FiLogOut, FiTrash2, FiAlertTriangle } from "react-icons/fi"; 
-// ⭐ Fingerprint Icon Import
+import { FiUser, FiMail, FiLock, FiSave, FiAlertTriangle } from "react-icons/fi"; 
 import { MdFingerprint } from "react-icons/md"; 
 import { useNavigate } from "react-router-dom"; 
 
-const Profile = () => {
-  // ❌ ThemeContext hata diya taaki crash na ho
+// ⭐ NEW: Browser ki WebAuthn Library Import
+import { startRegistration } from '@simplewebauthn/browser';
 
+const Profile = () => {
   const [formData, setFormData] = useState({ username: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
   
   // ⭐ Biometric State
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [bioLoading, setBioLoading] = useState(false); // Loading state for toggle
   
   const navigate = useNavigate(); 
-  
-  // ⚠️ API Link
   const API_URL = "https://fuel-tracker-api.vercel.app"; 
 
-  // Page load hote hi LocalStorage se data aur Settings dikhao
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
     
-    // ⭐ Biometric setting check
+    // Check setting
     const isBioEnabled = localStorage.getItem("biometricEnabled") === "true";
     setBiometricEnabled(isBioEnabled);
 
@@ -37,11 +35,66 @@ const Profile = () => {
     }
   }, [navigate]);
 
-  // ⭐ Biometric Toggle Function
-  const toggleBiometric = () => {
-    const newState = !biometricEnabled;
-    setBiometricEnabled(newState);
-    localStorage.setItem("biometricEnabled", newState);
+  // ⭐ REAL FINGERPRINT REGISTRATION LOGIC
+  const toggleBiometric = async () => {
+    // Agar pehle se ON hai, to OFF kar do (Simple)
+    if (biometricEnabled) {
+        setBiometricEnabled(false);
+        localStorage.setItem("biometricEnabled", "false");
+        alert("Biometric Login Disabled.");
+        return;
+    }
+
+    // Agar OFF hai, to REGISTER karna padega (Complex)
+    setBioLoading(true);
+    const token = localStorage.getItem("token");
+
+    try {
+        // Step 1: Backend se Challenge mango
+        const resp = await fetch(`${API_URL}/auth/register-challenge`, {
+            headers: { 'Authorization': token }
+        });
+        
+        if (!resp.ok) throw new Error("Failed to get challenge");
+        const options = await resp.json();
+
+        // Step 2: Browser ka Scanner Open karo (Magic happens here ✨)
+        const attResp = await startRegistration(options);
+
+        // Step 3: Result wapas Backend ko bhejo Verify karne ke liye
+        const verificationResp = await fetch(`${API_URL}/auth/register-verify`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token
+            },
+            body: JSON.stringify(attResp),
+        });
+
+        const verificationJSON = await verificationResp.json();
+
+        if (verificationJSON.verified && verificationResp.ok) {
+            // SUCCESS!
+            setBiometricEnabled(true);
+            localStorage.setItem("biometricEnabled", "true");
+            alert("Fingerprint Registered Successfully! 🎉");
+        } else {
+            alert("Verification Failed. Try again.");
+            setBiometricEnabled(false);
+        }
+
+    } catch (error) {
+        console.error(error);
+        // Agar user cancel kar de ya error aye
+        if (error.name === 'NotAllowedError') {
+            alert("You cancelled the fingerprint scan.");
+        } else {
+            alert("Biometric Registration Failed not allowed or supported.");
+        }
+        setBiometricEnabled(false);
+    } finally {
+        setBioLoading(false);
+    }
   };
 
   const handleUpdate = async () => {
@@ -79,41 +132,25 @@ const Profile = () => {
     }
   };
 
-  // --- DELETE ACCOUNT FUNCTION ---
   const handleDeleteAccount = async () => {
-    const confirmDelete = window.confirm(
-      "ARE YOU ABSOLUTELY SURE? This action is permanent. All your data will be immediately deleted from our servers, and there is no recovery option in any case."
-    );
-
-    if (!confirmDelete) return;
-
+    if(!window.confirm("Permanent Delete?")) return;
     const token = localStorage.getItem("token");
-
     try {
       const res = await fetch(`${API_URL}/profile`, {
         method: 'DELETE',
         headers: { 'Authorization': token }
       });
-
       if (res.ok) {
         localStorage.clear();
-        alert("Account deleted successfully! You will now be redirected to the login page.");
         navigate('/login');
-      } else {
-        const data = await res.json();
-        alert(data.error || "Failed to delete account.");
       }
-
-    } catch (error) {
-      console.error("Deletion Error:", error);
-      alert("A server error occurred during deletion.");
-    }
+    } catch (error) { alert("Error deleting account"); }
   };
 
   return (
     <div className="max-w-md mx-auto mt-4 md:mt-10 mb-24"> 
         
-        {/* ⭐ 1. SETTINGS CARD (Only Biometric) */}
+        {/* ⭐ SETTINGS CARD */}
         <div className="bg-white p-5 mb-6 rounded-2xl shadow-sm border border-gray-100">
             <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Security Settings</h2>
 
@@ -125,15 +162,18 @@ const Profile = () => {
                     </span>
                     <div>
                         <h3 className="text-md font-bold text-slate-800">Biometric Login</h3>
-                        <p className="text-xs text-slate-500">Enable fingerprint access</p>
+                        <p className="text-xs text-slate-500">
+                            {bioLoading ? "Waiting for scan..." : "Enable fingerprint access"}
+                        </p>
                     </div>
                 </div>
                 
                 <button 
                     onClick={toggleBiometric} 
+                    disabled={bioLoading}
                     className={`relative w-12 h-7 flex items-center rounded-full transition-colors duration-300 ${
                         biometricEnabled ? 'bg-emerald-500' : 'bg-gray-300'
-                    }`}
+                    } ${bioLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     <span 
                         className={`block w-5 h-5 rounded-full bg-white shadow transform transition-transform duration-300 ${
@@ -144,6 +184,8 @@ const Profile = () => {
             </div>
         </div>
         
+      {/* ... (Baaki Profile Form Code same rahega as previous) ... */}
+      
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
         <div className="flex items-center gap-3 mb-8 border-b border-gray-100 pb-4">
           <div className="bg-emerald-100 p-3 rounded-full text-emerald-600"> 
