@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 // Icons
 import { FaGasPump } from "react-icons/fa";
 import { FiEye, FiEyeOff } from "react-icons/fi"; 
-// Fingerprint Icon
 import { MdFingerprint } from "react-icons/md"; 
+
+// ⭐ IMPORTANT IMPORT (Iske bina fingerprint nahi chalega)
+import { startAuthentication } from '@simplewebauthn/browser';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,24 +14,21 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false); 
   const [loading, setLoading] = useState(false);
 
-  // ⭐ UPDATE: Page load hote hi Fingerprint prompt trigger karein (Conditions ke sath)
-  useEffect(() => {
-    // 1. Check karein ki user ne Profile se Biometric enable kiya hai ya nahi
-    const isBioEnabled = localStorage.getItem("biometricEnabled") === "true";
+  // API URL
+  const API_URL = "https://fuel-tracker-api.vercel.app"; 
 
-    if (isBioEnabled) {
-      // Thoda delay dete hain taaki component render ho jaye
-      const timer = setTimeout(() => {
-          handleBiometricLogin();
-      }, 500);
-      return () => clearTimeout(timer);
+  // Page load hote hi LocalStorage se last email utha lo (User asani ke liye)
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("lastEmail");
+    if(savedEmail) {
+        setFormData(prev => ({ ...prev, email: savedEmail }));
     }
   }, []);
 
   const handleLogin = async () => {
     setLoading(true);
     try {
-      const res = await fetch('https://fuel-tracker-api.vercel.app/login', {
+      const res = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -37,8 +36,10 @@ const Login = () => {
 
       const data = await res.json();
       if (res.ok) {
+        // Login Success
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data));
+        localStorage.setItem("lastEmail", formData.email); // Email yaad rakho next time ke liye
         window.location.href = "/"; 
       } else {
         alert(data.error);
@@ -50,22 +51,71 @@ const Login = () => {
     }
   };
 
-  // --- FINGERPRINT LOGIN LOGIC ---
+  // --- ⭐ ASLI FINGERPRINT LOGIN LOGIC ---
   const handleBiometricLogin = async () => {
-    if (!window.PublicKeyCredential) {
-      console.log("Biometrics not supported on this device.");
-      return;
+    // 1. Sabse pehle check karo ke Email likha hai ya nahi
+    if (!formData.email) {
+        alert("Please enter your email address first to verify fingerprint.");
+        return;
     }
 
+    setLoading(true);
+
     try {
-        // Browser aksar bina User Click ke Prompt block kar deta hai.
-        console.log("Attempting Biometric Login...");
-        
-        // Future Integration:
-        // navigator.credentials.get(...) yahan aayega
-        
+        // Step 1: Backend se Challenge mango (Email bhej kar)
+        const resp = await fetch(`${API_URL}/auth/login-challenge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: formData.email })
+        });
+
+        if (!resp.ok) {
+            const err = await resp.json();
+            throw new Error(err.error || "User not found");
+        }
+
+        const options = await resp.json();
+
+        // Step 2: Browser Scanner Open Karo 🖐️
+        const authResp = await startAuthentication(options);
+
+        // Step 3: Scan result wapas Backend bhejo Verify karne
+        const verificationResp = await fetch(`${API_URL}/auth/login-verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                email: formData.email, 
+                body: authResp 
+            })
+        });
+
+        const verificationJSON = await verificationResp.json();
+
+        if (verificationJSON.verified) {
+            // 🎉 SUCCESS! Token Save karo aur Login karwao
+            localStorage.setItem("token", verificationJSON.token);
+            localStorage.setItem("user", JSON.stringify({
+                username: verificationJSON.username,
+                email: verificationJSON.email,
+                _id: verificationJSON.userId
+            }));
+            localStorage.setItem("lastEmail", formData.email);
+            
+            alert("Fingerprint Verified! Logging in...");
+            window.location.href = "/";
+        } else {
+            alert("Fingerprint verification failed.");
+        }
+
     } catch (error) {
-      console.error("Auto-Biometric blocked by browser (User gesture required).");
+        console.error(error);
+        if (error.name === 'NotAllowedError') {
+            alert("Request cancelled.");
+        } else {
+            alert(error.message || "Biometric Login Failed");
+        }
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -85,6 +135,7 @@ const Login = () => {
           <input 
             type="email" 
             placeholder="Email" 
+            value={formData.email} // Value bind ki taaki auto-fill dikhe
             className="w-full p-3 border rounded-xl"
             onChange={(e) => setFormData({...formData, email: e.target.value})} 
           />
@@ -112,7 +163,7 @@ const Login = () => {
             disabled={loading}
             className="w-full bg-emerald-500 text-white py-3 rounded-xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/30"
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Logging in..." : "Login with Password"}
           </button>
 
           {/* Divider */}
