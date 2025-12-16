@@ -101,14 +101,19 @@ app.get('/auth/register-challenge', authenticateToken, async (req, res) => {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ error: 'User not found' });
 
+        // ⭐ Fix 1: Agar authenticators undefined hai, to empty array [] use karo
+        // Is se "Cannot read properties of undefined" wala error khatam ho jayega
+        const userAuthenticators = user.authenticators || [];
+
         const options = await generateRegistrationOptions({
             rpName: 'Fuel Tracker App',
             rpID: rpID,
-            // String ko Buffer/Bytes mein convert kar rahe hain
+            // ⭐ Fix 2: UserID ko Buffer mein convert (Jo aapne pehle kiya tha)
             userID: new Uint8Array(Buffer.from(user._id.toString())),
             userName: user.email,
-            // Don't allow user to register same fingerprint twice
-            excludeCredentials: user.authenticators?.map(authenticator => ({
+            
+            // ⭐ Fix 3: Safe authenticators variable use karein
+            excludeCredentials: userAuthenticators.map(authenticator => ({
                 id: authenticator.credentialID,
                 type: 'public-key',
                 transports: authenticator.transports,
@@ -116,18 +121,18 @@ app.get('/auth/register-challenge', authenticateToken, async (req, res) => {
             authenticatorSelection: {
                 residentKey: 'preferred',
                 userVerification: 'preferred',
-                authenticatorAttachment: 'platform', // Uses built-in scanner (TouchID/FaceID)
+                authenticatorAttachment: 'platform',
             },
         });
 
-        // Save challenge to DB to verify later
         user.currentChallenge = options.challenge;
         await user.save();
 
         res.json(options);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Something went wrong generating challenge' });
+        console.error("Challenge Error:", error);
+        // Error details bhej rahe hain taaki debug aasan ho
+        res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
 
