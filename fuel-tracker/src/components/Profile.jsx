@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"; 
-import { FiUser, FiMail, FiLock, FiSave, FiAlertTriangle } from "react-icons/fi"; 
+// 👇 Isme 'FiTrash2' add kiya gaya hai
+import { FiUser, FiMail, FiLock, FiSave, FiAlertTriangle, FiTrash2 } from "react-icons/fi";
 import { MdFingerprint } from "react-icons/md"; 
 import { useNavigate } from "react-router-dom"; 
 
