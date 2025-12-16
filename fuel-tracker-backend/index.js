@@ -9,25 +9,13 @@ require('dotenv').config();
 const FuelEntry = require('./models/FuelEntry');
 const User = require('./models/User');
 
-// ⭐ WebAuthn Library Imports
-const {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
-  generateAuthenticationOptions,
-  verifyAuthenticationResponse,
-} = require('@simplewebauthn/server');
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = "meraSecretKey123";
 
-// ⭐ WebAuthn Configuration
-const rpID = process.env.RP_ID || 'localhost';
-const origin = process.env.RP_ORIGIN || 'http://localhost:3000';
-
 // Middleware
 app.use(cors({
-    origin: origin,
+    origin: process.env.RP_ORIGIN || 'http://localhost:3000',
     credentials: true
 }));
 app.use(express.json());
@@ -52,13 +40,17 @@ const authenticateToken = (req, res, next) => {
 // --- ROUTES ---
 
 app.get('/', (req, res) => {
-  res.send('Fuel Tracker Backend is LIVE with Auth & Biometrics! 🔐');
+  res.send('Fuel Tracker Backend is LIVE! 🚀');
 });
 
 // 1. REGISTER
 app.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, password } = req.body;
+    // Email clean logic
+    const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ error: "Email already exists" });
 
@@ -75,7 +67,9 @@ app.post('/register', async (req, res) => {
 // 2. LOGIN
 app.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
+
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "User not found" });
 
@@ -88,173 +82,6 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ error: "Login failed" });
   }
 });
-
-// ======================================================
-// ⭐ BIOMETRIC / WEBAUTHN ROUTES (FIXED & SAFE 🛡️)
-// ======================================================
-
-// A. REGISTER FINGERPRINT (Challenge)
-app.get('/auth/register-challenge', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        const userAuthenticators = user.authenticators || [];
-
-        const options = await generateRegistrationOptions({
-            rpName: 'Fuel Tracker App',
-            rpID: rpID,
-            userID: new Uint8Array(Buffer.from(user._id.toString())),
-            userName: user.email,
-            // ⭐ SAFE FILTER: Invalid data remove kiya
-            excludeCredentials: userAuthenticators
-                .filter(auth => auth.credentialID) 
-                .map(authenticator => ({
-                    id: authenticator.credentialID,
-                    type: 'public-key',
-                    transports: authenticator.transports,
-                })),
-            authenticatorSelection: {
-                residentKey: 'preferred',
-                userVerification: 'preferred',
-                authenticatorAttachment: 'platform',
-            },
-        });
-
-        user.currentChallenge = options.challenge;
-        await user.save();
-
-        res.json(options);
-    } catch (error) {
-        console.error("Reg Challenge Error:", error);
-        res.status(500).json({ error: 'Server error', details: error.message });
-    }
-});
-
-// B. REGISTER FINGERPRINT (Verify)
-app.post('/auth/register-verify', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        const { body } = req;
-
-        const verification = await verifyRegistrationResponse({
-            response: body,
-            expectedChallenge: user.currentChallenge,
-            expectedOrigin: origin,
-            expectedRPID: rpID,
-        });
-
-        if (verification.verified) {
-            const { registrationInfo } = verification;
-            
-            const newAuthenticator = {
-                credentialID: registrationInfo.credentialID,
-                credentialPublicKey: registrationInfo.credentialPublicKey,
-                counter: registrationInfo.counter,
-                transports: body.response.transports,
-            };
-
-            if (!user.authenticators) user.authenticators = [];
-            user.authenticators.push(newAuthenticator);
-            
-            user.currentChallenge = undefined; 
-            await user.save();
-
-            res.json({ verified: true });
-        } else {
-            res.status(400).json({ verified: false, error: 'Verification failed' });
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Server error during verification' });
-    }
-});
-
-// C. LOGIN FINGERPRINT (Challenge) - ⚠️ ISME FIX KIYA HAI
-app.post('/auth/login-challenge', async (req, res) => {
-    try {
-        const { email } = req.body;
-        const user = await User.findOne({ email });
-        
-        if (!user || !user.authenticators || user.authenticators.length === 0) {
-            return res.status(400).json({ error: 'User not found or no biometrics registered' });
-        }
-
-        // ⭐ SAFE FILTER: Login ke waqt bhi check karo ke ID maujood hai
-        const safeAuthenticators = user.authenticators.filter(auth => auth.credentialID);
-
-        const options = await generateAuthenticationOptions({
-            rpID: rpID,
-            // ⭐ Yahan pehle crash ho raha tha, ab safe hai
-            allowCredentials: safeAuthenticators.map(authenticator => ({
-                id: authenticator.credentialID,
-                type: 'public-key',
-                transports: authenticator.transports,
-            })),
-            userVerification: 'preferred',
-        });
-
-        user.currentChallenge = options.challenge;
-        await user.save();
-
-        res.json(options);
-    } catch (error) {
-        console.error("Login Challenge Error:", error);
-        res.status(500).json({ error: 'Could not generate login challenge', details: error.message });
-    }
-});
-
-// D. LOGIN FINGERPRINT (Verify)
-app.post('/auth/login-verify', async (req, res) => {
-    try {
-        const { email, body } = req.body;
-        const user = await User.findOne({ email });
-
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        // Safe Find
-        const authenticator = (user.authenticators || []).find(
-            auth => auth.credentialID === body.id
-        );
-
-        if (!authenticator) {
-            return res.status(400).json({ error: 'Authenticator not found' });
-        }
-
-        const verification = await verifyAuthenticationResponse({
-            response: body,
-            expectedChallenge: user.currentChallenge,
-            expectedOrigin: origin,
-            expectedRPID: rpID,
-            authenticator: {
-                credentialID: authenticator.credentialID,
-                credentialPublicKey: authenticator.credentialPublicKey,
-                counter: authenticator.counter,
-            },
-        });
-
-        if (verification.verified) {
-            const { authenticationInfo } = verification;
-            
-            authenticator.counter = authenticationInfo.newCounter;
-            user.currentChallenge = undefined;
-            await user.save();
-
-            const token = jwt.sign({ id: user._id }, JWT_SECRET);
-            
-            res.json({ verified: true, token, username: user.username, email: user.email, userId: user._id });
-        } else {
-            res.status(400).json({ verified: false, error: 'Biometric verification failed' });
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Server error during login verification' });
-    }
-});
-
-// ======================================================
 
 // 3. ADD ENTRY
 app.post('/add', authenticateToken, async (req, res) => {
@@ -281,11 +108,9 @@ app.get('/history', authenticateToken, async (req, res) => {
 app.put('/update/:id', authenticateToken, async (req, res) => {
   try {
     const updatedEntry = await FuelEntry.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.id }, 
-      req.body,
-      { new: true }
+      { _id: req.params.id, userId: req.user.id }, req.body, { new: true }
     );
-    if (!updatedEntry) return res.status(404).json({ error: "Entry not found or unauthorized" });
+    if (!updatedEntry) return res.status(404).json({ error: "Entry not found" });
     res.json({ message: "Updated successfully", data: updatedEntry });
   } catch (error) {
     res.status(500).json({ error: "Update failed" });
@@ -296,7 +121,7 @@ app.put('/update/:id', authenticateToken, async (req, res) => {
 app.delete('/delete/:id', authenticateToken, async (req, res) => {
   try {
     const deletedEntry = await FuelEntry.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
-    if (!deletedEntry) return res.status(404).json({ error: "Entry not found or unauthorized" });
+    if (!deletedEntry) return res.status(404).json({ error: "Entry not found" });
     res.status(200).json({ message: "Deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: "Delete failed" });
@@ -306,8 +131,10 @@ app.delete('/delete/:id', authenticateToken, async (req, res) => {
 // 7. UPDATE PROFILE
 app.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, password } = req.body;
+    const email = req.body.email ? req.body.email.toLowerCase().trim() : null;
     const userId = req.user.id;
+
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -316,13 +143,14 @@ app.put('/profile', authenticateToken, async (req, res) => {
       if (existingUser) return res.status(400).json({ error: "Email already taken" });
       user.email = email;
     }
+
     if (username) user.username = username;
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
       user.password = hashedPassword;
     }
     await user.save();
-    res.json({ message: "Profile Updated Successfully!", user: { username: user.username, email: user.email } });
+    res.json({ message: "Profile Updated!", user: { username: user.username, email: user.email } });
   } catch (error) {
     res.status(500).json({ error: "Update failed" });
   }
@@ -333,8 +161,7 @@ app.delete('/profile', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
         await FuelEntry.deleteMany({ userId: userId });
-        const deletedUser = await User.findByIdAndDelete(userId);
-        if (!deletedUser) return res.status(404).json({ error: "User not found" });
+        await User.findByIdAndDelete(userId);
         res.status(200).json({ message: "Account deleted successfully." });
     } catch (error) {
         res.status(500).json({ error: "Account deletion failed" });
