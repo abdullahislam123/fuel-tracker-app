@@ -104,7 +104,8 @@ app.get('/auth/register-challenge', authenticateToken, async (req, res) => {
         const options = await generateRegistrationOptions({
             rpName: 'Fuel Tracker App',
             rpID: rpID,
-            userID: user._id.toString(),
+            // String ko Buffer/Bytes mein convert kar rahe hain
+            userID: new Uint8Array(Buffer.from(user._id.toString())),
             userName: user.email,
             // Don't allow user to register same fingerprint twice
             excludeCredentials: user.authenticators?.map(authenticator => ({
