@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"; 
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useNavigate } from "react-router-dom";
 // FiSun, FiMoon icons import kiye
-import { FiActivity, FiPlusCircle, FiClock, FiLogOut, FiUser, FiSun, FiMoon } from "react-icons/fi"; 
+import { FiHome , FiPlusCircle, FiClock, FiLogOut, FiUser, FiSun, FiMoon } from "react-icons/fi"; 
 import { FaGasPump } from "react-icons/fa";
 
 // Pages
