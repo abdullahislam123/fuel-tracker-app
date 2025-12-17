@@ -82,7 +82,7 @@ const Dashboard = () => {
             Welcome back,
         </h1>
             {/* ⭐ 2. Username (Next Line, Even Bigger size: text-5xl, Capitalized) */}
-        <p className="text-5xl font-extrabold text-white dark:text-white capitalize leading-snug">
+        <p className="text-5xl font-extrabold text-black dark:text-white capitalize leading-snug">
             <span className="text-emerald-500 dark:text-emerald-400">{username}</span>! 👋
         </p>
             {/* ⭐ 3. Sub-text (Replaced 'Overview' title) */}
