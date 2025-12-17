@@ -87,7 +87,7 @@ const BottomNav = () => {
       {/* 1. LEFT: Home */}
       <Link to="/" className={`flex flex-col items-center gap-1 ${isActive("/") ? "text-emerald-500" : "text-gray-400"}`}>
         {/* Reduced size to 20 */}
-        <FiActivity size={20} />
+        <FiHome size={20} />
         {/* Added Name */}
         <span className="text-[10px] font-medium">Home</span>
       </Link>
