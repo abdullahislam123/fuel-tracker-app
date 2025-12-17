@@ -45,7 +45,7 @@ const Sidebar = () => {
         </div>
         <nav className="flex flex-col gap-2">
           <Link to="/" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${isActive("/") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
-            <FiActivity /> Dashboard
+            <FiHome /> Dashboard
           </Link>
           <Link to="/add" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${isActive("/add") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
             <FiPlusCircle /> Add Record
@@ -66,7 +66,6 @@ const Sidebar = () => {
   );
 };
 
-// --- BOTTOM NAV (Mobile - Balanced Layout) ---
 // --- BOTTOM NAV (Mobile - Balanced Layout) ---
 const BottomNav = () => {
   // ⭐ Context se theme nikalenge
