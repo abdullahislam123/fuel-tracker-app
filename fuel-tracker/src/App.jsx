@@ -67,53 +67,63 @@ const Sidebar = () => {
 };
 
 // --- BOTTOM NAV (Mobile - Balanced Layout) ---
+// --- BOTTOM NAV (Mobile - Balanced Layout) ---
 const BottomNav = () => {
-  // ⭐ Context se theme nikalenge
-  const { theme } = React.useContext(ThemeContext); 
-  const location = useLocation();
-  const isActive = (path) => location.pathname === path;
+  // ⭐ Context se theme nikalenge
+  const { theme } = React.useContext(ThemeContext); 
+  const location = useLocation();
+  const isActive = (path) => location.pathname === path;
 
-  const handleLogout = () => {
-    if(window.confirm("Are you sure you want to logout?")) {
-      localStorage.clear();
-      window.location.href = "/login";
-    }
-  };
-  
-  return (
-    // ⭐ BottomNav BG ko neutral-900 rakha
-    <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-between items-center px-6 py-3 z-30 shadow-[0_-5px_10px_rgba(0,0,0,0.05)] dark:bg-neutral-900 dark:border-neutral-800 dark:shadow-[0_-5px_10px_rgba(0,0,0,0.8)]">
-      
-      {/* 1. LEFT: Home */}
-      <Link to="/" className={`flex flex-col items-center gap-1 ${isActive("/") ? "text-emerald-500" : "text-gray-400"}`}>
-        <FiActivity size={22} />
-      </Link>
-      
-      {/* 2. LEFT: History */}
-      <Link to="/history" className={`flex flex-col items-center gap-1 ${isActive("/history") ? "text-emerald-500" : "text-gray-400"}`}>
-        <FiClock size={22} />
-      </Link>
+  const handleLogout = () => {
+    if(window.confirm("Are you sure you want to logout?")) {
+      localStorage.clear();
+      window.location.href = "/login";
+    }
+  };
+  
+  return (
+    // ⭐ Changed py-3 to py-2 to make room for text without making the bar too big
+    <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-between items-center px-6 py-2 z-30 shadow-[0_-5px_10px_rgba(0,0,0,0.05)] dark:bg-neutral-900 dark:border-neutral-800 dark:shadow-[0_-5px_10px_rgba(0,0,0,0.8)]">
+      
+      {/* 1. LEFT: Home */}
+      <Link to="/" className={`flex flex-col items-center gap-1 ${isActive("/") ? "text-emerald-500" : "text-gray-400"}`}>
+        {/* Reduced size to 20 */}
+        <FiActivity size={20} />
+        {/* Added Name */}
+        <span className="text-[10px] font-medium">Home</span>
+      </Link>
+      
+      {/* 2. LEFT: History */}
+      <Link to="/history" className={`flex flex-col items-center gap-1 ${isActive("/history") ? "text-emerald-500" : "text-gray-400"}`}>
+        <FiClock size={20} />
+        {/* Added Name */}
+        <span className="text-[10px] font-medium">History</span>
+      </Link>
 
-      {/* 3. CENTER: Add Button (Floating) */}
-      <Link to="/add" className="relative -top-6">
+      {/* 3. CENTER: Add Button (Floating) */}
+      <Link to="/add" className="relative -top-6">
         {/* ⭐ Add Button Border ko neutral-900 rakha */}
-        <div className={`p-4 rounded-full shadow-xl border-4 border-gray-50 flex items-center justify-center transition-transform hover:scale-105 dark:border-neutral-900 ${isActive("/add") ? "bg-emerald-600 text-white" : "bg-emerald-500 text-white"}`}>
-          <FiPlusCircle size={28} />
-        </div>
-      </Link>
+        <div className={`p-4 rounded-full shadow-xl border-4 border-gray-50 flex items-center justify-center transition-transform hover:scale-105 dark:border-neutral-900 ${isActive("/add") ? "bg-emerald-600 text-white" : "bg-emerald-500 text-white"}`}>
+          <FiPlusCircle size={28} />
+        </div>
+      </Link>
 
-      {/* 4. RIGHT: Profile */}
-      <Link to="/profile" className={`flex flex-col items-center gap-1 ${isActive("/profile") ? "text-emerald-500" : "text-gray-400"}`}>
-        <FiUser size={22} />
-      </Link>
+      {/* 4. RIGHT: Profile */}
+      <Link to="/profile" className={`flex flex-col items-center gap-1 ${isActive("/profile") ? "text-emerald-500" : "text-gray-400"}`}>
+        <FiUser size={20} />
+        {/* Added Name */}
+        <span className="text-[10px] font-medium">Profile</span>
+      </Link>
 
-      {/* 5. RIGHT: Logout (Red Color) */}
-      <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-red-400 hover:text-red-600">
-        <FiLogOut size={22} />
-      </button>
+      {/* 5. RIGHT: Logout (Red Color) */}
+      <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-red-400 hover:text-red-600">
+        <FiLogOut size={20} />
+        {/* Added Name */}
+        <span className="text-[10px] font-medium">Logout</span>
+      </button>
 
-    </nav>
-  );
+    </nav>
+  );
 };
 
 // --- MAIN LAYOUT (Wrapper) ---
