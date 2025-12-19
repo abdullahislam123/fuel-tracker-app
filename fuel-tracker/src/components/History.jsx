@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 // FiList aur FiCalendar import kiye
-import { FiTrash2, FiDroplet, FiTrendingUp, FiClock, FiEdit2, FiX, FiSave, FiCalendar, FiList } from "react-icons/fi"; 
+import { FiDownload, FiTrash2, FiDroplet, FiTrendingUp, FiClock, FiEdit2, FiX, FiSave, FiCalendar, FiList } from "react-icons/fi"; 
 import { FaRoad } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -20,7 +20,40 @@ const groupEntriesByDate = (entries) => {
         return acc;
     }, {});
 };
+// --- NEW: EXPORT TO CSV FUNCTION ---
+  const exportToCSV = () => {
+    if (entries.length === 0) {
+      alert("No data to export");
+      return;
+    }
 
+    // Define CSV Headers
+    const headers = ["Date", "Time", "Liters", "Rate (Rs/L)", "Total Cost (Rs)", "Odometer"];
+    
+    // Convert data to CSV rows
+    const csvRows = [
+      headers.join(","), // Header row
+      ...entries.map(entry => [
+        entry.date,
+        entry.time || "-",
+        entry.liters,
+        entry.pricePerLiter,
+        entry.cost,
+        entry.odometer || "-"
+      ].join(","))
+    ].join("\n");
+
+    // Create a Blob and trigger download
+    const blob = new Blob([csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Fuel_History_${new Date().toLocaleDateString()}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 // Helper function to get the number of days in a month
 const getDaysInMonth = (year, month) => {
     return new Date(year, month + 1, 0).getDate();
@@ -223,6 +256,14 @@ const History = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">History</h1>
           <p className="text-slate-500 text-sm mt-1">Synced with Cloud Database.</p>
         </div>
+{/* ⭐ EXPORT BUTTON */}
+    <button 
+      onClick={exportToCSV}
+      className="flex items-center gap-2 bg-white border border-gray-200 text-slate-600 px-3 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all"
+    >
+      <FiDownload size={18} />
+      <span className="hidden md:inline">Export</span>
+    </button>
 
         {/* ⭐ ADDED: VIEW TOGGLE BUTTONS */}
         <div className="flex gap-2 p-1 bg-gray-100 rounded-xl shadow-inner">
