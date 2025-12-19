@@ -150,7 +150,7 @@ const History = () => {
             <header className="mb-6">
                 <div className="flex justify-between items-start mb-4">
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 dark:text-white">History</h1>
+                        <h1 className="text-3xl font-black text-slate-900">History</h1>
                         <p className="text-slate-500 text-sm dark:text-gray-400">Manage your fuel logs.</p>
                     </div>
                     <button onClick={exportToCSV} className="p-2.5 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-200 hover:scale-105 transition-transform active:scale-95">
@@ -181,7 +181,7 @@ const History = () => {
             <div className="mb-6 flex gap-3 overflow-x-auto pb-2">
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-xl border border-emerald-100 dark:border-emerald-800 whitespace-nowrap">
                     <span className="text-[10px] uppercase font-bold text-emerald-600 block">Filtered Total</span>
-                    <span className="font-black text-slate-800 dark:text-emerald-400">Rs. {totalStats.cost.toFixed(2)}</span>
+                    <span className="font-black text-slate-800 dark:text-black-400">Rs. {totalStats.cost.toFixed(2)}</span>
                 </div>
                 <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-xl border border-blue-100 dark:border-blue-800 whitespace-nowrap">
                     <span className="text-[10px] uppercase font-bold text-blue-600 block">Total Liters</span>
@@ -202,8 +202,8 @@ const History = () => {
                                 </div>
                             </div>
                             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => {setEditData(entry); setIsEditing(true);}} className="p-2 text-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-lg"><FiEdit2 size={16}/></button>
-                                <button onClick={() => handleDelete(entry._id)} className="p-2 text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg"><FiTrash2 size={16}/></button>
+                                <button onClick={() => {setEditData(entry); setIsEditing(true);}} className="p-2 text-blue-500 bg-blue-50 rounded-lg"><FiEdit2 size={16}/></button>
+                                <button onClick={() => handleDelete(entry._id)} className="p-2 text-red-500 bg-red-50 rounded-lg"><FiTrash2 size={16}/></button>
                             </div>
                         </div>
                     ))}
@@ -228,7 +228,7 @@ const History = () => {
             {isEditing && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-neutral-900 w-full max-w-md rounded-3xl p-6">
-                        <h2 className="text-xl font-black mb-6 dark:text-white">Edit Record</h2>
+                        <h2 className="text-xl font-black mb-6">Edit Record</h2>
                         <div className="space-y-4">
                             <input name="date" type="date" value={editData.date} onChange={handleEditChange} className="w-full p-3 rounded-xl bg-gray-100 dark:bg-neutral-800 border-none dark:text-white" />
                             <div className="flex gap-4">
