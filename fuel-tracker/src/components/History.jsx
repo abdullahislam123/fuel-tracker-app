@@ -121,27 +121,49 @@ const History = () => {
     };
 
     // --- 5. RENDER CALENDAR ---
-    const renderCalendarGrid = () => {
-        const year = currentMonth.getFullYear();
-        const month = currentMonth.getMonth();
-        const firstDay = new Date(year, month, 1).getDay();
-        const startPadding = firstDay === 0 ? 6 : firstDay - 1;
-        const daysInMonth = getDaysInMonth(year, month);
-        const cells = [];
-        for (let i = 0; i < startPadding; i++) cells.push(<div key={`p-${i}`} />);
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const hasEntry = entriesByDate[dateKey];
-            cells.push(
-                <div key={day} onClick={() => hasEntry && setSelectedDateEntries(hasEntry)}
-                    className={`p-2 h-16 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${hasEntry ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800' : 'bg-gray-50 border-gray-100 dark:bg-neutral-800 dark:border-neutral-700'}`}>
-                    <span className="text-xs font-bold dark:text-gray-400">{day}</span>
-                    {hasEntry && <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 text-right">Rs.{parseFloat(hasEntry.reduce((s, e) => s + parseFloat(e.cost), 0)).toFixed(0)}</span>}
-                </div>
-            );
-        }
-        return cells;
-    };
+    // --- 5. RENDER CALENDAR ---
+const renderCalendarGrid = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const startPadding = firstDay === 0 ? 6 : firstDay - 1;
+    const daysInMonth = getDaysInMonth(year, month);
+    const cells = [];
+
+    for (let i = 0; i < startPadding; i++) cells.push(<div key={`p-${i}`} className="h-16" />);
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const hasEntry = entriesByDate[dateKey];
+
+        cells.push(
+            <div 
+                key={day} 
+                onClick={() => hasEntry && setSelectedDateEntries(hasEntry)}
+                className={`p-1.5 h-20 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all active:scale-95
+                    ${hasEntry 
+                        ? 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' 
+                        : 'bg-gray-50 border-gray-100 dark:bg-neutral-800/40 dark:border-neutral-700'
+                    }`}
+            >
+                {/* Date Number at Top */}
+                <span className={`text-xs font-bold ${hasEntry ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-600'}`}>
+                    {day}
+                </span>
+
+                {/* Price Box at Bottom (Fixing the overlap) */}
+                {hasEntry && (
+                    <div className="bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg py-1 px-1 text-center">
+                        <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 block leading-none">
+                            Rs.{parseFloat(hasEntry.reduce((s, e) => s + parseFloat(e.cost), 0)).toFixed(0)}
+                        </span>
+                    </div>
+                )}
+            </div>
+        );
+    }
+    return cells;
+};
 
     return (
         <div className="relative pb-32 max-w-2xl mx-auto px-4">
@@ -155,24 +177,6 @@ const History = () => {
                     <button onClick={exportToCSV} className="p-3 bg-emerald-500 text-white rounded-2xl shadow-lg active:scale-95 transition-all">
                         <FiDownload size={22} />
                     </button>
-                </div>
-
-                {/* Stats Summary Card */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white dark:bg-neutral-800 p-4 rounded-4xl shadow-sm border border-gray-100 dark:border-neutral-700">
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600"><FiTrendingUp size={14}/></div>
-                            <span className="text-[10px] uppercase font-bold text-gray-400">Total Cost</span>
-                        </div>
-                        <h3 className="text-xl font-black dark:text-white">Rs. {totalStats.cost.toLocaleString()}</h3>
-                    </div>
-                    <div className="bg-white dark:bg-neutral-800 p-4 rounded-4xl shadow-sm border border-gray-100 dark:border-neutral-700">
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600"><FiDroplet size={14}/></div>
-                            <span className="text-[10px] uppercase font-bold text-gray-400">Total Fuel</span>
-                        </div>
-                        <h3 className="text-xl font-black dark:text-white">{totalStats.liters.toFixed(2)} <small className="text-xs">Ltrs</small></h3>
-                    </div>
                 </div>
 
                 {/* Search Bar */}
