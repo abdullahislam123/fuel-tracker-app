@@ -12,19 +12,19 @@ import Register from "./components/Register";
 import Profile from "./components/Profile";
 import LandingPage from "./components/LandingPage";
 
-// ⭐ Theme Context
 export const ThemeContext = React.createContext();
 
 const isAuthenticated = () => localStorage.getItem("token") !== null;
 
-// --- ⭐ NEW: MOBILE TOP HEADER (Theme Toggle Visibility Fix) ---
+// --- MOBILE TOP HEADER (Naming Reverted) ---
 const MobileHeader = () => {
   const { theme, toggleTheme } = useContext(ThemeContext);
   return (
     <div className="md:hidden flex justify-between items-center px-6 py-4 bg-white dark:bg-neutral-900 border-b dark:border-neutral-800 sticky top-0 z-40 transition-colors duration-300">
       <div className="flex items-center gap-2 text-emerald-500 font-black italic">
         <FaGasPump size={20} />
-        <span className="text-slate-900 dark:text-white text-sm">FINTRACK PK</span>
+        {/* Reverted to original name */}
+        <span className="text-slate-900 dark:text-white text-sm">FUEL TRACKER</span>
       </div>
       <button onClick={toggleTheme} className="p-2 bg-slate-100 dark:bg-neutral-800 rounded-xl transition-all active:scale-90">
         {theme === 'light' ? <FiMoon size={20} className="text-slate-600"/> : <FiSun size={20} className="text-yellow-400"/>}
@@ -33,7 +33,7 @@ const MobileHeader = () => {
   );
 };
 
-// --- SIDEBAR (Desktop) ---
+// --- SIDEBAR (Added Profile Link) ---
 const Sidebar = () => {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const location = useLocation();
@@ -52,15 +52,18 @@ const Sidebar = () => {
           </button>
         </div>
         <nav className="flex flex-col gap-2">
-          {/* Navigation Links with consistent bold text */}
-          <Link to="/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/dashboard") ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-slate-400 hover:text-white"}`}>
+          <Link to="/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/dashboard") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
             <FiHome /> Dashboard
           </Link>
-          <Link to="/add" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/add") ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-slate-400 hover:text-white"}`}>
+          <Link to="/add" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/add") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
             <FiPlusCircle /> Add Fuel
           </Link>
-          <Link to="/history" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/history") ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-slate-400 hover:text-white"}`}>
+          <Link to="/history" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/history") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
             <FiClock /> History
+          </Link>
+          {/* ⭐ Profile Link Added to Sidebar */}
+          <Link to="/profile" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/profile") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
+            <FiUser /> Profile
           </Link>
         </nav>
       </div>
@@ -71,7 +74,7 @@ const Sidebar = () => {
   );
 };
 
-// --- BOTTOM NAV (Mobile Only) ---
+// --- BOTTOM NAV (Corrected) ---
 const BottomNav = () => {
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
@@ -94,7 +97,7 @@ const BottomNav = () => {
   );
 };
 
-// --- ⭐ IMPROVED LAYOUT (Laptop vs Mobile Fix) ---
+// --- LAYOUT ---
 const Layout = ({ children }) => {
   const { theme } = useContext(ThemeContext);
   if (!isAuthenticated()) return <Navigate to="/login" />;
@@ -104,9 +107,8 @@ const Layout = ({ children }) => {
       <MobileHeader />
       <div className="flex flex-col md:flex-row">
         <Sidebar />
-        {/* Laptop par Wide (max-w-7xl) aur Mobile par Full Width */}
         <main className="w-full md:ml-64 p-4 pb-28 md:p-10 flex justify-center">
-          <div className="w-full max-w-7xl animate-fade-in">
+          <div className="w-full max-w-7xl">
              {children}
           </div>
         </main>
@@ -125,7 +127,6 @@ const App = () => {
     localStorage.setItem('theme', newTheme);
   };
 
-  // Ensure Tailwind 'dark' class is on the HTML root
   useEffect(() => {
     const root = window.document.documentElement;
     if (theme === 'dark') {
