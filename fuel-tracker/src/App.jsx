@@ -12,35 +12,42 @@ import Register from "./components/Register";
 import Profile from "./components/Profile";
 import LandingPage from "./components/LandingPage";
 
+// --- THEME CONTEXT ---
 export const ThemeContext = React.createContext();
 
 const isAuthenticated = () => localStorage.getItem("token") !== null;
 
-// --- MOBILE TOP HEADER (Naming Reverted) ---
+// --- MOBILE TOP HEADER ---
 const MobileHeader = () => {
   const { theme, toggleTheme } = useContext(ThemeContext);
   return (
     <div className="md:hidden flex justify-between items-center px-6 py-4 bg-white dark:bg-neutral-900 border-b dark:border-neutral-800 sticky top-0 z-40 transition-colors duration-300">
       <div className="flex items-center gap-2 text-emerald-500 font-black italic">
         <FaGasPump size={20} />
-        {/* Reverted to original name */}
-        <span className="text-slate-900 dark:text-white text-sm">FUEL TRACKER</span>
+        <span className="text-slate-900 dark:text-white text-sm tracking-tighter">FUEL TRACKER</span>
       </div>
-      <button onClick={toggleTheme} className="p-2 bg-slate-100 dark:bg-neutral-800 rounded-xl transition-all active:scale-90">
+      <button onClick={toggleTheme} className="p-2 bg-slate-100 dark:bg-neutral-800 rounded-xl transition-all active:scale-90 shadow-sm">
         {theme === 'light' ? <FiMoon size={20} className="text-slate-600"/> : <FiSun size={20} className="text-yellow-400"/>}
       </button>
     </div>
   );
 };
 
-// --- SIDEBAR (Added Profile Link) ---
+// --- SIDEBAR (Desktop) ---
 const Sidebar = () => {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
 
+  const handleLogout = () => {
+    if(window.confirm("Are you sure you want to logout?")) {
+      localStorage.clear();
+      window.location.href = "/";
+    }
+  };
+
   return (
-    <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-white h-screen fixed top-0 left-0 p-6 shadow-xl z-20 justify-between">
+    <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-white h-screen fixed top-0 left-0 p-6 shadow-xl z-20 justify-between border-r border-slate-800">
       <div>
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-2 text-xl font-black tracking-tighter">
@@ -52,47 +59,63 @@ const Sidebar = () => {
           </button>
         </div>
         <nav className="flex flex-col gap-2">
-          <Link to="/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/dashboard") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
+          <Link to="/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/dashboard") ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-slate-400 hover:text-white"}`}>
             <FiHome /> Dashboard
           </Link>
-          <Link to="/add" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/add") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
+          <Link to="/add" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/add") ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-slate-400 hover:text-white"}`}>
             <FiPlusCircle /> Add Fuel
           </Link>
-          <Link to="/history" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/history") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
+          <Link to="/history" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/history") ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-slate-400 hover:text-white"}`}>
             <FiClock /> History
-          </Link>
-          {/* ⭐ Profile Link Added to Sidebar */}
-          <Link to="/profile" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/profile") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
-            <FiUser /> Profile
           </Link>
         </nav>
       </div>
-      <button onClick={() => { localStorage.clear(); window.location.href = "/"; }} className="flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl font-bold transition-all">
-        <FiLogOut /> Logout
-      </button>
+
+      {/* ⭐ Bottom Section: Profile on left, Logout icon on right */}
+      <div className="flex items-center gap-2 border-t border-slate-800 pt-6">
+        <Link to="/profile" className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/profile") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
+          <FiUser /> Profile
+        </Link>
+        <button onClick={handleLogout} className="p-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-all group" title="Logout">
+          <FiLogOut size={20} className="group-hover:scale-110 transition-transform" />
+        </button>
+      </div>
     </aside>
   );
 };
 
-// --- BOTTOM NAV (Corrected) ---
+// --- BOTTOM NAV (Mobile) ---
 const BottomNav = () => {
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
 
+  const handleLogout = () => {
+    if(window.confirm("Logout?")) {
+      localStorage.clear();
+      window.location.href = "/";
+    }
+  };
+
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-neutral-900 border-t border-gray-100 dark:border-neutral-800 flex justify-around items-center py-3 z-50 shadow-2xl">
+    <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-neutral-900 border-t border-gray-100 dark:border-neutral-800 flex justify-around items-center py-2 pb-3 z-50 shadow-2xl transition-colors">
       <Link to="/dashboard" className={`flex flex-col items-center gap-1 ${isActive("/dashboard") ? "text-emerald-500" : "text-gray-400"}`}>
-        <FiHome size={22} /> <span className="text-[10px] font-bold">Home</span>
+        <FiHome size={20} /> <span className="text-[10px] font-bold">Home</span>
       </Link>
       <Link to="/history" className={`flex flex-col items-center gap-1 ${isActive("/history") ? "text-emerald-500" : "text-gray-400"}`}>
-        <FiClock size={22} /> <span className="text-[10px] font-bold">History</span>
+        <FiClock size={20} /> <span className="text-[10px] font-bold">History</span>
       </Link>
-      <Link to="/add" className="relative -top-5 bg-emerald-500 text-white p-4 rounded-full shadow-lg border-4 border-white dark:border-neutral-900">
-        <FiPlusCircle size={24} />
+      <Link to="/add" className="relative -top-5">
+        <div className="p-4 rounded-full bg-emerald-500 text-white shadow-lg border-4 border-white dark:border-neutral-900 active:scale-95 transition-transform">
+          <FiPlusCircle size={24} />
+        </div>
       </Link>
       <Link to="/profile" className={`flex flex-col items-center gap-1 ${isActive("/profile") ? "text-emerald-500" : "text-gray-400"}`}>
-        <FiUser size={22} /> <span className="text-[10px] font-bold">Profile</span>
+        <FiUser size={20} /> <span className="text-[10px] font-bold">Profile</span>
       </Link>
+      {/* ⭐ Separate Logout Icon */}
+      <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-red-400 active:scale-90 transition-transform">
+        <FiLogOut size={20} /> <span className="text-[10px] font-bold">Logout</span>
+      </button>
     </nav>
   );
 };
@@ -108,7 +131,7 @@ const Layout = ({ children }) => {
       <div className="flex flex-col md:flex-row">
         <Sidebar />
         <main className="w-full md:ml-64 p-4 pb-28 md:p-10 flex justify-center">
-          <div className="w-full max-w-7xl">
+          <div className="w-full max-w-7xl animate-fade-in">
              {children}
           </div>
         </main>

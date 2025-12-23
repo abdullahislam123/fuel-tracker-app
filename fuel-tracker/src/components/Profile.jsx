@@ -90,9 +90,6 @@ const Profile = () => {
                 <p className="text-slate-500 text-sm">Update your account details</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="text-red-500 hover:bg-red-50 p-2 rounded-lg" title="Logout">
-              <FiLogOut size={20} />
-          </button>
         </div>
 
         <div className="space-y-5">
