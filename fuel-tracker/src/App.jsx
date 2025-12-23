@@ -10,7 +10,7 @@ import AddFuel from "./components/AddFuel";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import Profile from "./components/Profile";
-import LandingPage from "./components/Landingpage";
+import LandingPage from "./components/LandingPage";
 
 // --- THEME CONTEXT ---
 export const ThemeContext = React.createContext();
