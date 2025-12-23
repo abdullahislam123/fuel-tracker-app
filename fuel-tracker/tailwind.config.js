@@ -5,6 +5,7 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}", // <--- YE LINE SAB SE ZAROORI HAI
   ],
   theme: {
+    darkMode: 'class',
     extend: {},
   },
   plugins: [],
