@@ -10,7 +10,10 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false); 
   const [loading, setLoading] = useState(false);
 
-  const API_URL = "https://fuel-tracker-api.vercel.app"; 
+  // Ye code khud hi detect kar lega ke aap laptop par hain ya live
+const API_URL = window.location.hostname === "localhost" 
+  ? "http://localhost:5000" 
+  : "https://fuel-tracker-api.vercel.app";
 
   // Page load hote hi LocalStorage se email utha lo
   useEffect(() => {

@@ -171,7 +171,7 @@ const renderCalendarGrid = () => {
             <header className="mb-6 pt-6 space-y-4">
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Fuel Log</h1>
+                        <h1 className="text-3xl font-black text-white tracking-tight">Fuel Log</h1>
                         <p className="text-slate-500 text-xs font-bold uppercase tracking-widest dark:text-gray-400">Manage History</p>
                     </div>
                     <button onClick={exportToCSV} className="p-3 bg-emerald-500 text-white rounded-2xl shadow-lg active:scale-95 transition-all">

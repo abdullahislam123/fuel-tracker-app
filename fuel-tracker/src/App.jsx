@@ -12,9 +12,9 @@ import Register from "./components/Register";
 import Profile from "./components/Profile";
 import LandingPage from "./components/LandingPage";
 
-// --- THEME CONTEXT ---
 export const ThemeContext = React.createContext();
 
+// Token check function
 const isAuthenticated = () => localStorage.getItem("token") !== null;
 
 // --- MOBILE TOP HEADER ---
@@ -71,7 +71,6 @@ const Sidebar = () => {
         </nav>
       </div>
 
-      {/* ⭐ Bottom Section: Profile on left, Logout icon on right */}
       <div className="flex items-center gap-2 border-t border-slate-800 pt-6">
         <Link to="/profile" className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/profile") ? "bg-emerald-500 text-white" : "text-slate-400 hover:text-white"}`}>
           <FiUser /> Profile
@@ -112,7 +111,6 @@ const BottomNav = () => {
       <Link to="/profile" className={`flex flex-col items-center gap-1 ${isActive("/profile") ? "text-emerald-500" : "text-gray-400"}`}>
         <FiUser size={20} /> <span className="text-[10px] font-bold">Profile</span>
       </Link>
-      {/* ⭐ Separate Logout Icon */}
       <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-red-400 active:scale-90 transition-transform">
         <FiLogOut size={20} /> <span className="text-[10px] font-bold">Logout</span>
       </button>
@@ -163,9 +161,12 @@ const App = () => {
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {/* ⭐ FIX: Agar login hai tou Dashboard bhejo, warna Landing Page */}
+          <Route path="/" element={isAuthenticated() ? <Navigate to="/dashboard" /> : <LandingPage />} />
+          
+          <Route path="/login" element={isAuthenticated() ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/register" element={isAuthenticated() ? <Navigate to="/dashboard" /> : <Register />} />
+          
           <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
           <Route path="/add" element={<Layout><AddFuel /></Layout>} />
           <Route path="/history" element={<Layout><History /></Layout>} />
