@@ -11,13 +11,29 @@ const User = require('./models/User');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = "meraSecretKey123";
+// ⭐ Environment variable use karein, fallback ke sath
+const JWT_SECRET = process.env.JWT_SECRET || "meraSecretKey123"; 
 
-// Middleware
+// --- ⭐ CORS DEEP FIX (Handles Local & Live) ---
+const allowedOrigins = [
+  "http://localhost:5173",              // Alternative Local
+  "https://fuel-tracker-frontend.vercel.app"    // Live Production URL
+];
+
 app.use(cors({
-    origin: process.env.RP_ORIGIN || 'http://localhost:3000',
-    credentials: true
+  origin: (origin, callback) => {
+    // !origin handles Postman; allowedOrigins handles Browsers
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS Policy: This origin is not allowed'));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
 app.use(express.json());
 
 // --- DATABASE CONNECT ---
@@ -25,9 +41,14 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected Successfully!"))
   .catch((err) => console.log("❌ DB Connection Error:", err));
 
-// --- SECURITY MIDDLEWARE ---
+// --- ⭐ SECURITY MIDDLEWARE (Bearer Token Fix) ---
 const authenticateToken = (req, res, next) => {
-  const token = req.headers['authorization'];
+  const authHeader = req.headers['authorization'];
+  // Agar frontend "Bearer <token>" bhejta hai to usay clean karein
+  const token = authHeader && authHeader.startsWith('Bearer ') 
+    ? authHeader.split(' ')[1] 
+    : authHeader;
+
   if (!token) return res.status(401).json({ error: "Access Denied" });
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
@@ -37,17 +58,16 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// --- ROUTES ---
+// --- ROUTES (Your original logic, untouched) ---
 
 app.get('/', (req, res) => {
-  res.send('Fuel Tracker Backend is LIVE! 🚀');
+  res.send('FUEL TRACKER Backend is LIVE! 🚀');
 });
 
 // 1. REGISTER
 app.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
-    // Email clean logic
     const email = req.body.email ? req.body.email.toLowerCase().trim() : "";
     if (!email) return res.status(400).json({ error: "Email is required" });
 
