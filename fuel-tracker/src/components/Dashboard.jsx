@@ -30,7 +30,7 @@ const Dashboard = () => {
     const totalLiters = entries.reduce((acc, item) => acc + parseFloat(item.liters || item.fuelAmount || 0), 0);
     const avgPrice = totalLiters > 0 ? (totalSpent / totalLiters).toFixed(2) : 0;
 
-    if (loading) return <div className="p-10 text-center text-emerald-500 font-bold">Loading...</div>;
+    if (loading) return <div className="p-10 text-center text-emerald-500 font-bold">Loading your fuel stats...</div>;
 
     return (
         <div className="animate-fade-in">
