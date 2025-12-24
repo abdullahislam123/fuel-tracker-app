@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext } from "react"; 
+import React, { useState, useEffect, useContext } from "react";
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
-import { FiHome, FiPlusCircle, FiClock, FiLogOut, FiUser, FiSun, FiMoon } from "react-icons/fi"; 
+import { FiHome, FiPlusCircle, FiClock, FiLogOut, FiUser, FiSun, FiMoon } from "react-icons/fi";
 import { FaGasPump } from "react-icons/fa";
 
 // Components
@@ -27,7 +27,7 @@ const MobileHeader = () => {
         <span className="text-slate-900 dark:text-white text-sm tracking-tighter">FUEL TRACKER</span>
       </div>
       <button onClick={toggleTheme} className="p-2 bg-slate-100 dark:bg-neutral-800 rounded-xl transition-all active:scale-90 shadow-sm">
-        {theme === 'light' ? <FiMoon size={20} className="text-slate-600"/> : <FiSun size={20} className="text-yellow-400"/>}
+        {theme === 'light' ? <FiMoon size={20} className="text-slate-600" /> : <FiSun size={20} className="text-yellow-400" />}
       </button>
     </div>
   );
@@ -40,7 +40,7 @@ const Sidebar = () => {
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
-    if(window.confirm("Are you sure you want to logout?")) {
+    if (window.confirm("Are you sure you want to logout?")) {
       localStorage.clear();
       window.location.href = "/";
     }
@@ -89,7 +89,7 @@ const BottomNav = () => {
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
-    if(window.confirm("Logout?")) {
+    if (window.confirm("Logout?")) {
       localStorage.clear();
       window.location.href = "/";
     }
@@ -130,7 +130,7 @@ const Layout = ({ children }) => {
         <Sidebar />
         <main className="w-full md:ml-64 p-4 pb-28 md:p-10 flex justify-center">
           <div className="w-full max-w-7xl animate-fade-in">
-             {children}
+            {children}
           </div>
         </main>
       </div>
@@ -150,11 +150,19 @@ const App = () => {
 
   useEffect(() => {
     const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+
+    // 1. Purani state clean karein
+    root.classList.remove('light', 'dark');
+
+    // 2. Nayi class add karein
+    root.classList.add(theme);
+
+    // 3. ⭐ Browser ki internal color-scheme set karein
+    // Ye line browser ko batati hai ke system theme ko ignore kare
+    root.style.colorScheme = theme;
+
+    // 4. Persistence check
+    localStorage.setItem('theme', theme);
   }, [theme]);
 
   return (
@@ -163,10 +171,10 @@ const App = () => {
         <Routes>
           {/* ⭐ FIX: Agar login hai tou Dashboard bhejo, warna Landing Page */}
           <Route path="/" element={isAuthenticated() ? <Navigate to="/dashboard" /> : <LandingPage />} />
-          
+
           <Route path="/login" element={isAuthenticated() ? <Navigate to="/dashboard" /> : <Login />} />
           <Route path="/register" element={isAuthenticated() ? <Navigate to="/dashboard" /> : <Register />} />
-          
+
           <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
           <Route path="/add" element={<Layout><AddFuel /></Layout>} />
           <Route path="/history" element={<Layout><History /></Layout>} />

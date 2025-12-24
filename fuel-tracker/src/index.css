@@ -1,11 +1,10 @@
 @import "tailwindcss";
 
-@layer components {
-  /* Ye class light mode aur dark mode dono ko handle karegi */
-  
+/* ⭐ Tailwind v4 ko batayein ke system settings ko ignore kare */
+@custom-variant dark (&:where(.dark, .dark *));
 
-  /* Agar aapko sirf light mode ke liye khas rang chahiye */
-  .text-dark-only {
-    @apply text-slate-900;
-  } 
+@layer base {
+  body {
+    @apply transition-colors duration-300;
+  }
 }

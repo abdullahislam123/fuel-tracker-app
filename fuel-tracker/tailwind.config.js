@@ -2,12 +2,11 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}", // <--- YE LINE SAB SE ZAROORI HAI
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class', // ⭐ Sirf yahan hona chahiye (Root level par)
   theme: {
-    darkMode: 'class',
-    extend: {},
+    extend: {}, // Dark mode settings theme ke andar nahi aati
   },
   plugins: [],
-  darkMode: 'class',
 }

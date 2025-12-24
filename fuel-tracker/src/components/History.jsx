@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { FiDownload, FiTrash2, FiDroplet, FiTrendingUp, FiClock, FiEdit2, FiX, FiSave, FiCalendar, FiList, FiSearch, FiHash } from "react-icons/fi";
-import { FaRoad } from "react-icons/fa";
+import { FiDownload, FiTrash2, FiDroplet, FiTrendingUp, FiClock, FiEdit2, FiX, FiSave, FiCalendar, FiList, FiSearch, FiHash, FiInfo } from "react-icons/fi";
+import { FaRoad, FaGasPump } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 // --- HELPERS ---
@@ -14,8 +14,6 @@ const groupEntriesByDate = (entries) => {
         return acc;
     }, {});
 };
-
-const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 
 const History = () => {
     const [entries, setEntries] = useState([]);
@@ -56,12 +54,6 @@ const History = () => {
         );
     }, [entries, searchTerm]);
 
-    const totalStats = useMemo(() => {
-        const cost = filteredEntries.reduce((sum, e) => sum + parseFloat(e.cost || 0), 0);
-        const liters = filteredEntries.reduce((sum, e) => sum + parseFloat(e.liters || 0), 0);
-        return { cost, liters };
-    }, [filteredEntries]);
-
     const entriesByDate = useMemo(() => groupEntriesByDate(entries), [entries]);
 
     // --- 3. CSV EXPORT ---
@@ -89,7 +81,10 @@ const History = () => {
             const res = await fetch(`https://fuel-tracker-api.vercel.app/delete/${id}`, {
                 method: 'DELETE', headers: { 'Authorization': token }
             });
-            if (res.ok) setEntries(entries.filter(entry => entry._id !== id));
+            if (res.ok) {
+                setEntries(entries.filter(entry => entry._id !== id));
+                setSelectedDateEntries(null);
+            }
         } catch (error) { alert("Error deleting"); }
     };
 
@@ -116,70 +111,68 @@ const History = () => {
                 const updated = await res.json();
                 setEntries(entries.map(item => item._id === editData._id ? updated.data : item));
                 setIsEditing(false);
+                setSelectedDateEntries(null);
             }
         } catch (error) { alert("Update failed"); }
     };
 
     // --- 5. RENDER CALENDAR ---
-    // --- 5. RENDER CALENDAR ---
-const renderCalendarGrid = () => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const startPadding = firstDay === 0 ? 6 : firstDay - 1;
-    const daysInMonth = getDaysInMonth(year, month);
-    const cells = [];
+    const renderCalendarGrid = () => {
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        const startPadding = firstDay === 0 ? 6 : firstDay - 1;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const cells = [];
 
-    for (let i = 0; i < startPadding; i++) cells.push(<div key={`p-${i}`} className="h-16" />);
+        for (let i = 0; i < startPadding; i++) cells.push(<div key={`p-${i}`} className="h-20" />);
 
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const hasEntry = entriesByDate[dateKey];
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const hasEntry = entriesByDate[dateKey];
 
-        cells.push(
-            <div 
-                key={day} 
-                onClick={() => hasEntry && setSelectedDateEntries(hasEntry)}
-                className={`p-1.5 h-20 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all active:scale-95
-                    ${hasEntry 
-                        ? 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' 
-                        : 'bg-gray-50 border-gray-100 dark:bg-neutral-800/40 dark:border-neutral-700'
-                    }`}
-            >
-                {/* Date Number at Top */}
-                <span className={`text-xs font-bold ${hasEntry ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-600'}`}>
-                    {day}
-                </span>
+            cells.push(
+                <div
+                    key={day}
+                    onClick={() => hasEntry && setSelectedDateEntries(hasEntry)}
+                    className={`p-1.5 h-15 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all active:scale-95
+                    ${hasEntry
+                            ? 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800 ring-2 ring-emerald-500/20'
+                            : 'bg-gray-50 border-gray-100 dark:bg-neutral-800/40 dark:border-neutral-700'
+                        }`}
+                >
+                    <span className={`text-xs font-black ${hasEntry ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-600'}`}>
+                        {day}
+                    </span>
 
-                {/* Price Box at Bottom (Fixing the overlap) */}
-                {hasEntry && (
-                    <div className="bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg py-1 px-1 text-center">
-                        <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 block leading-none">
-                            Rs.{parseFloat(hasEntry.reduce((s, e) => s + parseFloat(e.cost), 0)).toFixed(0)}
-                        </span>
-                    </div>
-                )}
-            </div>
-        );
-    }
-    return cells;
-};
+                    {hasEntry && (
+                        <div className="bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg py-1 px-0.5 text-center overflow-hidden">
+                            <span className="text-[8px] md:text-[10px] font-black text-emerald-600 dark:text-emerald-400 block leading-none truncate">
+                                Rs.{parseFloat(hasEntry.reduce((s, e) => s + parseFloat(e.cost), 0)).toFixed(0)}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        return cells;
+    };
 
     return (
-        <div className="relative pb-32 max-w-2xl mx-auto px-4">
+        <div className="relative pb-32 max-w-4xl mx-auto px-4 animate-fade-in">
             {/* --- HEADER --- */}
             <header className="mb-6 pt-6 space-y-4">
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-3xl font-black text-white tracking-tight">Fuel Log</h1>
+                        {/* ⭐ FIX: Light mode mein "Fuel Log" black rahega */}
+                        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Fuel Log</h1>
                         <p className="text-slate-500 text-xs font-bold uppercase tracking-widest dark:text-gray-400">Manage History</p>
                     </div>
-                    <button onClick={exportToCSV} className="p-3 bg-emerald-500 text-white rounded-2xl shadow-lg active:scale-95 transition-all">
-                        <FiDownload size={22} />
+                    <button onClick={exportToCSV} className="p-4 bg-emerald-500 text-white rounded-3xl shadow-lg shadow-emerald-500/30 active:scale-95 transition-all">
+                        <FiDownload size={20} />
                     </button>
                 </div>
 
-                {/* Search Bar */}
                 <div className="relative w-full group">
                     <FiSearch className="absolute left-4 top-4 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
                     <input
@@ -187,136 +180,161 @@ const renderCalendarGrid = () => {
                         placeholder="Search date, cost, or liters..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-neutral-800 border-none rounded-2xl shadow-sm dark:text-white outline-none focus:ring-2 ring-emerald-500/20"
+                        className="w-full pl-12 pr-4 py-4 bg-white dark:bg-neutral-800 border-none rounded-2xl shadow-sm dark:text-white outline-none focus:ring-2 ring-emerald-500/20 font-medium"
                     />
                 </div>
 
-                {/* View Toggles */}
-                <div className="flex bg-gray-100 dark:bg-neutral-900 p-1 rounded-2xl border border-gray-200 dark:border-neutral-800">
-                    <button onClick={() => setCurrentView('list')} className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all ${currentView === 'list' ? 'bg-white dark:bg-neutral-800 shadow-sm text-emerald-600' : 'text-gray-500'}`}><FiList /> LIST</button>
-                    <button onClick={() => setCurrentView('month')} className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all ${currentView === 'month' ? 'bg-white dark:bg-neutral-800 shadow-sm text-emerald-600' : 'text-gray-500'}`}><FiCalendar /> CALENDAR</button>
+                <div className="flex bg-gray-100 dark:bg-neutral-900 p-1.5 rounded-2xl border border-gray-200 dark:border-neutral-800">
+                    <button onClick={() => setCurrentView('list')} className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-black tracking-widest transition-all ${currentView === 'list' ? 'bg-white dark:bg-neutral-800 shadow-md text-emerald-600' : 'text-gray-400'}`}><FiList /> LIST</button>
+                    <button onClick={() => setCurrentView('month')} className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-black tracking-widest transition-all ${currentView === 'month' ? 'bg-white dark:bg-neutral-800 shadow-md text-emerald-600' : 'text-gray-400'}`}><FiCalendar /> CALENDAR</button>
                 </div>
             </header>
 
             {/* --- LIST CONTENT --- */}
             {currentView === 'list' ? (
-                <div className="space-y-4">
-                    {filteredEntries.length > 0 ? filteredEntries.map(entry => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredEntries.map(entry => (
                         <div key={entry._id} className="bg-white dark:bg-neutral-800 rounded-4xl p-5 shadow-sm border border-gray-100 dark:border-neutral-700 relative overflow-hidden group">
-                            {/* Card Header: Date & Time */}
+
+                            {/* ⭐ FIXED BUTTONS AREA: Absolute positioning taake hamesha nazar aayen */}
+                            <div className="absolute top-5 right-5 flex gap-1 z-10">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setEditData(entry); setIsEditing(true); }}
+                                    className="p-2.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-xl transition-all shadow-sm"
+                                    title="Edit"
+                                >
+                                    <FiEdit2 size={18} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(entry._id); }}
+                                    className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm"
+                                    title="Delete"
+                                >
+                                    <FiTrash2 size={18} />
+                                </button>
+                            </div>
+
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-emerald-50 dark:bg-emerald-900/30 p-2.5 rounded-xl text-emerald-600">
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/30 p-3 rounded-2xl text-emerald-600">
                                         <FiDroplet size={20} />
                                     </div>
                                     <div>
-                                        <div className="flex items-center gap-2 text-slate-900 dark:text-white">
-                                            <h4 className="font-black text-lg">Rs. {parseFloat(entry.cost).toFixed(2)}</h4>
-                                        </div>
-                                        <div className="flex items-center gap-3 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                                            <span className="flex items-center gap-1"><FiCalendar /> {entry.date}</span>
-                                            <span className="flex items-center gap-1"><FiClock /> {entry.time || 'N/A'}</span>
+                                        <h4 className="font-black text-lg text-slate-900 dark:text-white">Rs. {parseFloat(entry.cost).toFixed(2)}</h4>
+                                        <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                                            <span>{entry.date}</span> • <span>{entry.time || 'N/A'}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex gap-1">
-                                    <button onClick={() => { setEditData(entry); setIsEditing(true); }} className="p-2.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors"><FiEdit2 size={18} /></button>
-                                    <button onClick={() => handleDelete(entry._id)} className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"><FiTrash2 size={18} /></button>
-                                </div>
                             </div>
-
-                            {/* Card Body: Technical Details */}
                             <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-50 dark:border-neutral-700/50">
                                 <div className="text-center">
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Quantity</p>
-                                    <p className="text-xs font-black dark:text-gray-200 flex items-center justify-center gap-1"><FiDroplet className="text-blue-500"/> {entry.liters}L</p>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase">Liters</p>
+                                    <p className="text-xs font-black dark:text-gray-200">{entry.liters}L</p>
                                 </div>
                                 <div className="text-center border-x border-gray-50 dark:border-neutral-700/50">
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Rate</p>
-                                    <p className="text-xs font-black dark:text-gray-200 flex items-center justify-center gap-1"><FiTrendingUp className="text-emerald-500"/> {entry.pricePerLiter}</p>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase">Rate</p>
+                                    <p className="text-xs font-black dark:text-gray-200">{entry.pricePerLiter}</p>
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Odometer</p>
-                                    <p className="text-xs font-black dark:text-gray-200 flex items-center justify-center gap-1"><FaRoad className="text-slate-400"/> {entry.odometer || '---'}</p>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase">Odometer</p>
+                                    <p className="text-xs font-black dark:text-gray-200">{entry.odometer || '---'}</p>
                                 </div>
                             </div>
                         </div>
-                    )) : (
-                        <div className="text-center py-20 opacity-30">
-                            <FiList size={48} className="mx-auto mb-2" />
-                            <p className="font-bold uppercase tracking-widest text-xs">No records found</p>
-                        </div>
-                    )}
+                    ))}
                 </div>
             ) : (
-                /* Month View */
-                <div className="bg-white dark:bg-neutral-800 p-5 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-neutral-700">
-                    <div className="flex justify-between items-center mb-6 px-2">
-                        <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-neutral-700 rounded-xl text-emerald-500 font-black">←</button>
-                        <h2 className="font-black dark:text-white uppercase tracking-tighter text-sm">{currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
-                        <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-neutral-700 rounded-xl text-emerald-500 font-black">→</button>
+                /* Calendar View (Unchanged) */
+                <div className="bg-white dark:bg-neutral-900 p-4 md:p-8 rounded-[3rem] shadow-xl border border-gray-100 dark:border-neutral-800">
+                    <div className="flex justify-between items-center mb-8 px-2">
+                        <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-neutral-800 rounded-2xl text-emerald-500 hover:bg-emerald-50 transition-all shadow-sm">←</button>
+                        <h2 className="font-black text-slate-800 dark:text-white uppercase tracking-tighter text-base md:text-xl">{currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
+                        <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-neutral-800 rounded-2xl text-emerald-500 hover:bg-emerald-50 transition-all shadow-sm">→</button>
                     </div>
-                    <div className="grid grid-cols-7 gap-2">
-                        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-                            <div key={i} className="text-center text-[10px] font-black text-gray-300 mb-2">{d}</div>
+                    <div className="grid grid-cols-7 gap-1.5 md:gap-4">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => (
+                            <div key={i} className="text-center text-[9px] md:text-xs font-black text-slate-300 dark:text-neutral-600 mb-2 uppercase tracking-widest">{d}</div>
                         ))}
                         {renderCalendarGrid()}
                     </div>
                 </div>
             )}
 
-            {/* --- EDIT MODAL --- */}
-            {isEditing && editData && (
-                <div className="fixed inset-0 z-100 flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-neutral-800 w-full max-w-md rounded-[2.5rem] p-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-black dark:text-white">Edit Record</h2>
-                            <button onClick={() => setIsEditing(false)} className="p-2 bg-gray-100 dark:bg-neutral-700 rounded-full dark:text-white"><FiX /></button>
+            {/* Popups & Modals remain same... */}
+            {selectedDateEntries && (
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+                    <div className="bg-white dark:bg-neutral-900 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative border dark:border-neutral-800 animate-slide-up">
+                        <button onClick={() => setSelectedDateEntries(null)} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors"><FiX size={24} /></button>
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/10 rounded-3xl flex items-center justify-center text-emerald-500 mx-auto mb-4">
+                                <FaGasPump size={30} />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-white">{selectedDateEntries[0].date}</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Refill Summary</p>
                         </div>
-                        
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Liters</label>
-                                    <div className="relative mt-1">
-                                        <FiDroplet className="absolute left-3 top-3.5 text-blue-500" />
-                                        <input name="liters" type="number" value={editData.liters} onChange={handleEditChange} className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-neutral-700 dark:text-white rounded-2xl outline-none border-none focus:ring-2 ring-emerald-500" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Price/L</label>
-                                    <div className="relative mt-1">
-                                        <FiTrendingUp className="absolute left-3 top-3.5 text-emerald-500" />
-                                        <input name="pricePerLiter" type="number" value={editData.pricePerLiter} onChange={handleEditChange} className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-neutral-700 dark:text-white rounded-2xl outline-none border-none focus:ring-2 ring-emerald-500" />
-                                    </div>
-                                </div>
+                            <div className="flex justify-between items-center p-5 bg-slate-50 dark:bg-neutral-800 rounded-3xl">
+                                <div className="flex items-center gap-3"><FiDroplet className="text-blue-500" /><span className="text-sm font-bold text-slate-500">Total Fuel</span></div>
+                                <span className="font-black text-slate-900 dark:text-white">{selectedDateEntries.reduce((s, e) => s + parseFloat(e.liters), 0).toFixed(2)} L</span>
                             </div>
-
-                            <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Odometer Reading</label>
-                                <div className="relative mt-1">
-                                    <FaRoad className="absolute left-3 top-3.5 text-slate-400" />
-                                    <input name="odometer" type="number" value={editData.odometer || ""} onChange={handleEditChange} className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-neutral-700 dark:text-white rounded-2xl outline-none border-none focus:ring-2 ring-emerald-500" />
-                                </div>
+                            <div className="flex justify-between items-center p-5 bg-emerald-50/50 dark:bg-emerald-500/5 rounded-3xl border border-emerald-100 dark:border-emerald-900/20">
+                                <div className="flex items-center gap-3"><FiTrendingUp className="text-emerald-500" /><span className="text-sm font-bold text-slate-500">Total Bill</span></div>
+                                <span className="font-black text-emerald-600 dark:text-emerald-400 text-lg">Rs. {selectedDateEntries.reduce((s, e) => s + parseFloat(e.cost), 0).toLocaleString()}</span>
                             </div>
-
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-2xl flex justify-between items-center">
-                                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">Calculated Total</span>
-                                <span className="text-xl font-black text-emerald-600 dark:text-emerald-300">Rs. {editData.cost}</span>
-                            </div>
-
-                            <button onClick={saveEdit} className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-black shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 mt-2">
-                                <FiSave /> UPDATE RECORD
-                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Success Toast */}
-            {showExportSuccess && (
-                <div className="fixed top-10 left-1/2 -translate-x-1/2 z-110 bg-slate-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 animate-bounce">
-                    <FiSave size={20} className="text-emerald-400" /> <span className="text-sm font-bold">CSV Exported Successfully!</span>
+            {isEditing && editData && (
+                <div className="fixed inset-0 z-120 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+                    <div className="bg-white dark:bg-neutral-800 w-full max-w-md rounded-[3rem] p-8 shadow-2xl animate-slide-up border dark:border-neutral-700">
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white">Edit Entry</h2>
+                            <button onClick={() => setIsEditing(false)} className="p-2 bg-gray-100 dark:bg-neutral-700 rounded-full dark:text-white transition-transform active:scale-90">
+                                <FiX />
+                            </button>
+                        </div>
+
+                        <div className="space-y-5">
+                            {/* Inputs Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-1 block">Liters</label>
+                                    <input name="liters" type="number" value={editData.liters} onChange={handleEditChange} className="w-full p-4 bg-gray-50 dark:bg-neutral-700 dark:text-white rounded-2xl outline-none focus:ring-2 ring-emerald-500 font-bold" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-1 block">Rate</label>
+                                    <input name="pricePerLiter" type="number" value={editData.pricePerLiter} onChange={handleEditChange} className="w-full p-4 bg-gray-50 dark:bg-neutral-700 dark:text-white rounded-2xl outline-none focus:ring-2 ring-emerald-500 font-bold" />
+                                </div>
+                            </div>
+
+                            {/* Total Display */}
+                            <div className="bg-emerald-500/10 p-5 rounded-2xl border-2 border-dashed border-emerald-500/20 flex justify-between items-center">
+                                <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest">New Total</span>
+                                <span className="text-xl font-black text-emerald-600">Rs. {editData.cost}</span>
+                            </div>
+
+                            {/* ⭐ BUTTONS SECTION: Side-by-Side Layout */}
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setIsEditing(false)}
+                                    className="flex-1 py-4 bg-slate-100 dark:bg-neutral-700 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-xs tracking-widest transition-all active:scale-95 hover:bg-slate-200 dark:hover:bg-neutral-600"
+                                >
+                                    CANCEL
+                                </button>
+
+                                <button
+                                    onClick={saveEdit}
+                                    className="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-black text-xs tracking-widest shadow-lg shadow-emerald-500/30 active:scale-95 transition-all hover:bg-emerald-600"
+                                >
+                                    SAVE CHANGES
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
