@@ -188,6 +188,16 @@ app.delete('/profile', authenticateToken, async (req, res) => {
     }
 });
 
+// --- ⭐ 9. GET MAINTENANCE DATA (Fix for 404 Error) ---
+app.get('/maintenance', authenticateToken, async (req, res) => {
+  try {
+    // Filhaal hum empty array bhej rahe hain taake frontend ka calculateOilSystem crash na ho
+    // Baad mein yahan hum Database se data uthaein gy
+    res.status(200).json([]); 
+  } catch (error) {
+    res.status(500).json({ error: "Maintenance fetch failed" });
+  }
+});
 // --- SERVER START ---
 if (require.main === module) {
   app.listen(PORT, () => {
