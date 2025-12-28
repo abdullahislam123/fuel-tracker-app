@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
-import { FiHome, FiPlusCircle, FiClock, FiLogOut, FiUser, FiSun, FiMoon } from "react-icons/fi";
+import { FiHome, FiPlusCircle, FiClock, FiLogOut, FiUser, FiSun, FiMoon, FiHelpCircle } from "react-icons/fi";
 import { FaGasPump } from "react-icons/fa";
 
 // Components
@@ -8,6 +8,7 @@ import Dashboard from "./components/Dashboard";
 import History from "./components/History";
 import AddFuel from "./components/AddFuel";
 import Login from "./components/Login";
+import SupportForm from "./components/SupportForm";
 import Register from "./components/Register";
 import Profile from "./components/Profile";
 import LandingPage from "./components/LandingPage";
@@ -68,6 +69,10 @@ const Sidebar = () => {
           <Link to="/history" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/history") ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-slate-400 hover:text-white"}`}>
             <FiClock /> History
           </Link>
+          {/* --- SUPPORT LINK ADDED --- */}
+          <Link to="/support" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${isActive("/support") ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-slate-400 hover:text-white"}`}>
+            <FiHelpCircle /> Support
+          </Link>
         </nav>
       </div>
 
@@ -107,6 +112,10 @@ const BottomNav = () => {
         <div className="p-4 rounded-full bg-emerald-500 text-white shadow-lg border-4 border-white dark:border-neutral-900 active:scale-95 transition-transform">
           <FiPlusCircle size={24} />
         </div>
+      </Link>
+      {/* --- SUPPORT LINK ADDED FOR MOBILE --- */}
+      <Link to="/support" className={`flex flex-col items-center gap-1 ${isActive("/support") ? "text-emerald-500" : "text-gray-400"}`}>
+        <FiHelpCircle size={20} /> <span className="text-[10px] font-bold">Support</span>
       </Link>
       <Link to="/profile" className={`flex flex-col items-center gap-1 ${isActive("/profile") ? "text-emerald-500" : "text-gray-400"}`}>
         <FiUser size={20} /> <span className="text-[10px] font-bold">Profile</span>
@@ -150,18 +159,9 @@ const App = () => {
 
   useEffect(() => {
     const root = window.document.documentElement;
-
-    // 1. Purani state clean karein
     root.classList.remove('light', 'dark');
-
-    // 2. Nayi class add karein
     root.classList.add(theme);
-
-    // 3. ⭐ Browser ki internal color-scheme set karein
-    // Ye line browser ko batati hai ke system theme ko ignore kare
     root.style.colorScheme = theme;
-
-    // 4. Persistence check
     localStorage.setItem('theme', theme);
   }, [theme]);
 
@@ -169,9 +169,7 @@ const App = () => {
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       <BrowserRouter>
         <Routes>
-          {/* ⭐ FIX: Agar login hai tou Dashboard bhejo, warna Landing Page */}
           <Route path="/" element={isAuthenticated() ? <Navigate to="/dashboard" /> : <LandingPage />} />
-
           <Route path="/login" element={isAuthenticated() ? <Navigate to="/dashboard" /> : <Login />} />
           <Route path="/register" element={isAuthenticated() ? <Navigate to="/dashboard" /> : <Register />} />
 
@@ -179,6 +177,10 @@ const App = () => {
           <Route path="/add" element={<Layout><AddFuel /></Layout>} />
           <Route path="/history" element={<Layout><History /></Layout>} />
           <Route path="/profile" element={<Layout><Profile /></Layout>} />
+          
+          {/* --- SUPPORT ROUTE ADDED --- */}
+          <Route path="/support" element={<Layout><SupportForm /></Layout>} />
+          
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>
