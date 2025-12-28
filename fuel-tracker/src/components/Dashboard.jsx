@@ -3,7 +3,6 @@ import { FiAlertTriangle, FiDroplet, FiZap, FiEdit3, FiActivity } from "react-ic
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config"; 
 
-// --- PROFESSIONAL SKELETON UI (Only UI, No Logic Change) ---
 const DashboardSkeleton = () => (
   <div className="animate-pulse pb-32 px-4 md:px-10 lg:px-16 max-w-7xl mx-auto italic pt-8 space-y-12">
     <div className="h-16 bg-gray-200 dark:bg-neutral-800 w-64 rounded-2xl"></div>
@@ -49,7 +48,8 @@ const Dashboard = () => {
             } catch (err) {
                 console.error("Dashboard Error:", err);
             } finally {
-                setLoading(false);
+                // Thora delay taake transition smooth ho
+                setTimeout(() => setLoading(false), 1000);
             }
         };
         fetchData();
@@ -58,15 +58,13 @@ const Dashboard = () => {
     const calculateOilSystem = (history, dbMaint) => {
         const savedOdo = localStorage.getItem("manualOdo");
         const latestEntryOdo = history.length > 0 ? Math.max(...history.map(e => parseFloat(e.odometer || 0))) : 0;
-        
-        // Restore original currentOdo logic
         const currentOdo = savedOdo ? parseFloat(savedOdo) : (latestEntryOdo || 4873.8);
         setCurrentOdometer(currentOdo);
 
         const INTERVAL = 1000;
         let lastService = dbMaint?.oil_last_odo || parseFloat(localStorage.getItem(`last_oil_odo`)) || 0;
         
-        // ⭐ RESTORED ORIGINAL BASELINE LOGIC (Fix for 800km issue)
+        // ⭐ Baseline logic for China 70cc bike
         if(lastService === 0 && currentOdo > 0) {
             lastService = 4200; 
         }
@@ -82,7 +80,6 @@ const Dashboard = () => {
             target: targetOdo,
             critical: remaining <= 0
         });
-
         if (remaining <= 0) setShowAlert(true);
     };
 
@@ -96,7 +93,6 @@ const Dashboard = () => {
             });
             if (res.ok) {
                 localStorage.setItem(`last_oil_odo`, currentOdometer);
-                alert(`Oil reset at ${currentOdometer} KM!`);
                 window.location.reload();
             }
         } catch (error) {
@@ -120,41 +116,58 @@ const Dashboard = () => {
         return { totalSpent, totalLiters, fuelAvg };
     }, [entries]);
 
-    if (loading) return <DashboardSkeleton />;
+    // --- LOADING UI FIX ---
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-white dark:bg-neutral-950">
+                {/* 🟢 YouTube Style: One-pass Loading Bar */}
+                <div className="fixed top-0 left-0 w-full h-0.75 z-1000 bg-transparent">
+                    <div className="h-full bg-emerald-500 shadow-[0_0_10px_#10b981] animate-youtube-bar"></div>
+                </div>
+                
+                <DashboardSkeleton />
+
+                <style>{`
+                    @keyframes youtube-bar {
+                        0% { width: 0%; }
+                        20% { width: 30%; }
+                        50% { width: 70%; }
+                        100% { width: 90%; }
+                    }
+                    .animate-youtube-bar {
+                        animation: youtube-bar 3s ease-out forwards; /* 'forwards' ensures it stays at the end */
+                    }
+                `}</style>
+            </div>
+        );
+    }
 
     return (
         <div className="animate-in fade-in duration-700 pb-32 px-4 md:px-10 lg:px-16 max-w-7xl mx-auto italic font-bold">
-            {/* ALERT OVERLAY */}
             {showAlert && (
                 <div className="fixed inset-x-4 top-4 z-100 md:max-w-md md:mx-auto bg-red-600 text-white p-6 rounded-[2.5rem] shadow-2xl flex items-center gap-4 border-2 border-white/20">
                     <FiAlertTriangle size={32} />
                     <div className="flex-1">
-                        <h4 className="text-xs uppercase font-black tracking-tight">Oil Change Required</h4>
-                        <button onClick={handleOilReset} className="mt-2 bg-white text-red-600 px-4 py-1 rounded-lg text-[10px] uppercase font-black">Confirm Reset</button>
+                        <h4 className="text-xs uppercase font-black">Oil Service Overdue</h4>
+                        <button onClick={handleOilReset} className="mt-2 bg-white text-red-600 px-4 py-1 rounded-lg text-[10px] uppercase font-black">Confirm Service</button>
                     </div>
                 </div>
             )}
 
             <header className="mb-12 pt-8 flex justify-between items-center">
-                <div>
-                    <h1 className="text-4xl md:text-7xl font-black text-slate-900 dark:text-white italic tracking-tighter leading-none">FuelTracker<span className="text-emerald-500">.pro</span></h1>
-                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Precision Performance Monitoring</p>
-                </div>
+                <h1 className="text-4xl md:text-7xl font-black text-slate-900 dark:text-white italic tracking-tighter leading-none">FuelTracker<span className="text-emerald-500">.pro</span></h1>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-                {/* ENGINE OIL CARD */}
+                {/* Engine Oil Card */}
                 <div className="lg:col-span-2 bg-slate-900 p-10 md:p-14 rounded-[4.5rem] shadow-2xl relative overflow-hidden group border border-white/5">
                     <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-10">
                         <div className="text-center md:text-left flex-1">
                             <p className="text-emerald-500 text-xs font-black uppercase tracking-[0.3em] mb-4 italic">Oil Life Status</p>
                             <h2 className="text-8xl md:text-9xl font-black text-white italic tracking-tighter leading-none">{oilStatus.remaining}</h2>
-                            <p className="text-2xl text-slate-400 mt-2 uppercase">KM Remaining</p>
-                            <div className="flex flex-wrap gap-4 mt-8 justify-center md:justify-start">
-                                <button onClick={handleOilReset} className="bg-emerald-500 text-white px-10 py-4 rounded-4xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-500/20">Reset Cycle</button>
-                            </div>
+                            <p className="text-2xl text-slate-400 mt-2 uppercase text-nowrap">KM Remaining</p>
+                            <button onClick={handleOilReset} className="mt-8 bg-emerald-500 text-white px-10 py-4 rounded-4xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">Reset Cycle</button>
                         </div>
-                        
                         <div className="relative w-48 h-48 md:w-64 md:h-64 flex items-center justify-center">
                             <svg className="w-full h-full transform -rotate-90">
                                 <circle cx="50%" cy="50%" r="45%" fill="transparent" stroke="currentColor" strokeWidth="14" className="text-slate-800" />
@@ -166,28 +179,23 @@ const Dashboard = () => {
                             </div>
                         </div>
                     </div>
-                    <FiDroplet className="absolute -right-10 -bottom-10 text-emerald-500 opacity-5" size={300} />
                 </div>
 
-                {/* ODOMETER INPUT CARD */}
+                {/* Odometer Card */}
                 <div className="bg-white dark:bg-neutral-900 p-10 rounded-[4.5rem] border dark:border-neutral-800 shadow-xl flex flex-col justify-between group">
-                    <div>
-                        <div className="bg-emerald-500/10 p-4 rounded-3xl text-emerald-500 w-fit mb-6"><FiEdit3 size={24}/></div>
-                        <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Sync Odometer</h3>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Current: {currentOdometer} KM</p>
-                        <input 
-                            type="number" 
-                            value={manualOdoInput} 
-                            onChange={(e) => setManualOdoInput(e.target.value)} 
-                            placeholder="Enter KM" 
-                            className="w-full mt-10 p-6 bg-slate-50 dark:bg-neutral-800 border-none rounded-3xl outline-none font-black text-slate-900 dark:text-white text-5xl italic placeholder:opacity-10" 
-                        />
-                    </div>
-                    <button onClick={handleManualUpdate} className="w-full mt-8 bg-slate-900 dark:bg-emerald-600 text-white py-6 rounded-3xl font-black text-[12px] uppercase tracking-[0.3em] hover:opacity-90 active:scale-95 transition-all">Push Update</button>
+                    <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter italic">Sync Odometer</h3>
+                    <input 
+                        type="number" 
+                        value={manualOdoInput} 
+                        onChange={(e) => setManualOdoInput(e.target.value)} 
+                        placeholder={currentOdometer} 
+                        className="w-full mt-10 p-6 bg-slate-50 dark:bg-neutral-800 border-none rounded-3xl outline-none font-black text-slate-900 dark:text-white text-5xl italic placeholder:opacity-10" 
+                    />
+                    <button onClick={handleManualUpdate} className="w-full mt-8 bg-slate-900 dark:bg-emerald-600 text-white py-6 rounded-3xl font-black text-[12px] uppercase tracking-[0.3em] active:scale-95 transition-all">Push Update</button>
                 </div>
             </div>
 
-            {/* QUICK STATS */}
+            {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="bg-emerald-500 p-10 rounded-[3.5rem] shadow-2xl text-white relative overflow-hidden group">
                     <FiZap className="absolute -right-8 -bottom-8 text-white/20" size={180} />
