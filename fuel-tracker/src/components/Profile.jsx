@@ -48,22 +48,56 @@ const Profile = () => {
   };
 
   const handleUpdate = async () => {
-    setLoading(true);
-    const token = localStorage.getItem("token");
-    try {
-      const res = await fetch(`${API_URL}/profile`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': token },
-        body: JSON.stringify(formData)
-      });
-      if (res.ok) {
-        localStorage.clear();
-        alert("Success: Profile Updated! Please login again with your new credentials.");
-        navigate("/login");
-      }
-    } catch (error) { alert("Update failed"); }
-    finally { setLoading(false); }
-  };
+  // 1. Validation: Khali data bhejne se rokein
+  if (!formData.username || !formData.email) {
+    return alert("Username and Email are required!");
+  }
+
+  setLoading(true);
+  const token = localStorage.getItem("token");
+
+  try {
+    const res = await fetch(`${API_URL}/profile`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${token}` // Standard Bearer format use karein
+      },
+      body: JSON.stringify({
+        username: formData.username,
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password // Agar naya password hai toh jayega, warna backend ignore karega
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      // 2. ⭐ LocalStorage Sync: Naya data save karein taake Dashboard refresh na karna pare
+      // Hum purana token wahi rakhenge, bas user details badlenge
+      const updatedUser = {
+        id: data.user.id || data.user._id,
+        username: data.user.username,
+        email: data.user.email
+      };
+      
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      alert("✨ Success: Profile Updated!");
+      
+      // 3. Dashboard par bhejein taake user naya naam dekh sakay
+      navigate("/dashboard"); 
+    } else {
+      // Backend se aane wala specific error dikhayein
+      alert(data.error || "Update failed. Please try again.");
+    }
+  } catch (error) {
+    console.error("Update Error:", error);
+    alert("Server connection error. Please try again later.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDeleteAccount = async () => {
     if (!window.confirm("CRITICAL: Are you sure? All fuel logs and maintenance history will be deleted forever.")) return;

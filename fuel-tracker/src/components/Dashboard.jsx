@@ -23,6 +23,8 @@ const Dashboard = () => {
     const [currentOdometer, setCurrentOdometer] = useState(0);
     const navigate = useNavigate();
 
+    const userData = JSON.parse(localStorage.getItem("user"));
+    const registeredUsername = userData ? userData.username : "Pro User";
     const fetchData = async () => {
         const token = localStorage.getItem("token");
         if (!token) { navigate("/login"); return; }
@@ -64,6 +66,8 @@ const calculateOilSystem = (history, vehicle) => {
     // Agar Car hai tou 5000, Bike hai tou 1000, warna jo user ne set kiya wo.
     const INTERVAL = vehicle.maintenanceInterval || (vehicle.type === 'Car' ? 5000 : 1000); 
     
+    const userData = JSON.parse(localStorage.getItem("user"));
+    const registeredUsername = userData ? userData.username : "Pro User";
     // ⭐ NO HARDCODING: Database se pichli service ki reading uthao.
     // Agar nayi gaari hai jiski service nahi hui, tou baseline 0 hogi.
     const lastService = vehicle.oilLastOdo || 0; 
@@ -97,19 +101,25 @@ const calculateOilSystem = (history, vehicle) => {
     };
 
     const handleOilReset = async () => {
-        const token = localStorage.getItem("token");
-        if(window.confirm(`Did you change oil at ${currentOdometer} KM? Next target will be ${Math.floor(currentOdometer + 1000)} KM`)) {
-            try {
-                await fetch(`${API_URL}/maintenance/reset`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': token },
-                    body: JSON.stringify({ vehicleId: selectedVehicleId, currentOdo: currentOdometer })
-                });
-                localStorage.setItem(`odo_${selectedVehicleId}`, currentOdometer);
-                fetchData();
-            } catch (error) { console.error("Reset Failed"); }
-        }
-    };
+    const token = localStorage.getItem("token");
+    
+    // ⭐ Gaari ke apne interval ke mutabiq next target calculate karein
+    const currentVehicle = vehicles.find(v => v._id === selectedVehicleId);
+    const interval = currentVehicle?.maintenanceInterval || (currentVehicle?.type === 'Car' ? 5000 : 1000);
+    const nextTarget = Math.floor(currentOdometer + interval);
+
+    if(window.confirm(`Did you change oil at ${currentOdometer} KM? Next target will be ${nextTarget} KM`)) {
+        try {
+            await fetch(`${API_URL}/maintenance/reset`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                body: JSON.stringify({ vehicleId: selectedVehicleId, currentOdo: currentOdometer })
+            });
+            localStorage.setItem(`odo_${selectedVehicleId}`, currentOdometer);
+            fetchData();
+        } catch (error) { console.error("Reset Failed"); }
+    }
+};
 
     const stats = useMemo(() => {
         const totalSpent = entries.reduce((acc, item) => acc + (parseFloat(item.cost) || 0), 0);
@@ -130,6 +140,9 @@ const calculateOilSystem = (history, vehicle) => {
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/30"><FiShield size={20} /></div>
                     <div>
+                        <p className="text-[10px] text-emerald-500 tracking-[0.2em] font-black mb-0.5 opacity-80">
+                            Welcome, {registeredUsername}
+                        </p>
                         <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Log<span className="text-emerald-500">.pro</span></h1>
                         <select value={selectedVehicleId} onChange={(e) => setSelectedVehicleId(e.target.value)} className="bg-transparent text-[9px] uppercase font-black tracking-widest text-slate-400 outline-none cursor-pointer">
                             {vehicles.map(v => <option key={v._id} value={v._id} className="dark:bg-[#0B0E14]">{v.name}</option>)}
@@ -202,10 +215,7 @@ const calculateOilSystem = (history, vehicle) => {
                 </div>
             </div>
 
-            {/* ACTION BUTTON */}
-            <button onClick={() => navigate('/add')} className="fixed bottom-24 right-8 bg-emerald-500 text-white w-16 h-16 rounded-4xl shadow-[0_20px_50px_rgba(16,185,129,0.4)] flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-50 group border-4 border-white dark:border-[#0B0E14]">
-                <FiPlus size={28} className="group-hover:rotate-90 transition-transform" />
-            </button>
+            
         </div>
     );
 };

@@ -75,8 +75,8 @@ app.post('/register', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = new User({ 
-            username, 
-            email: email.toLowerCase().trim(), 
+            username: username, 
+            email: email.toLowerCase(), 
             password: hashedPassword 
         });
 
@@ -189,6 +189,29 @@ app.put('/maintenance/reset', authenticateToken, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Reset failed" });
   }
+});
+// index.js mein add karein
+app.put('/profile', authenticateToken, async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+        const updateData = { username, email: email.toLowerCase() };
+
+        // Agar user ne naya password diya hai, to hash karke update karein
+        if (password && password.trim() !== "") {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            updateData.password = hashedPassword;
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user.id, 
+            { $set: updateData }, 
+            { new: true } // Updated data wapas bhejne ke liye
+        ).select("-password");
+
+        res.status(200).json({ message: "Profile Updated!", user: updatedUser });
+    } catch (error) {
+        res.status(500).json({ error: "Update failed in database" });
+    }
 });
 
 app.put('/fix-my-data', authenticateToken, async (req, res) => {

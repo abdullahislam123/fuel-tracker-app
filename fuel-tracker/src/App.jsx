@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate,useNavigate } from "react-router-dom";
 import { FiHome, FiPlusCircle, FiClock, FiLogOut, FiUser, FiSun, FiMoon, FiHelpCircle, FiMoreHorizontal, FiX } from "react-icons/fi";
 import { FaGasPump } from "react-icons/fa";
 
@@ -70,6 +70,12 @@ const Sidebar = () => {
           <Link to="/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold ${isActive("/dashboard") ? "bg-emerald-500 text-white" : "text-slate-400"}`}><FiHome /> Dashboard</Link>
           <Link to="/add" className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold ${isActive("/add") ? "bg-emerald-500 text-white" : "text-slate-400"}`}><FiPlusCircle /> Add Fuel</Link>
           <Link to="/history" className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold ${isActive("/history") ? "bg-emerald-500 text-white" : "text-slate-400"}`}><FiClock /> History</Link>
+          <Link to="/profile" className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold ${isActive("/profile") ? "bg-emerald-500 text-white" : "text-slate-400"}`}><FiUser /> Profile</Link>
+          <Link to="/support" className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold ${isActive("/support") ? "bg-emerald-500 text-white" : "text-slate-400"}`}><FiHelpCircle /> Support</Link>
+          
+          <button onClick={toggleTheme} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold ${theme === 'light' ? 'text-slate-400 hover:bg-white/10' : 'text-yellow-400 hover:bg-white/10'}`}>
+            {theme === 'light' ? <FiMoon /> : <FiSun />} {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+          </button>
           <Link to="/select-vehicle" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 font-bold hover:text-white"><FaGasPump size={14} /> Switch Vehicle</Link>
         </nav>
       </div>
@@ -82,24 +88,56 @@ const Sidebar = () => {
 const BottomNav = () => {
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
+    
     const isActive = (path) => location.pathname === path;
     const closeMenu = () => setIsMoreOpen(false);
 
     return (
         <>
-            <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-55 transition-opacity ${isMoreOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`} onClick={closeMenu} />
-            <div className={`fixed inset-x-0 bottom-0 z-60 bg-white dark:bg-[#0B0E14] rounded-t-[3rem] p-8 shadow-2xl transition-transform duration-500 ${isMoreOpen ? "translate-y-0" : "translate-y-full"}`}>
-                <div className="w-12 h-1.5 bg-gray-200 dark:bg-neutral-800 rounded-full mx-auto mb-8"></div>
-                <div className="grid grid-cols-2 gap-8 mb-4">
-                    <Link to="/profile" onClick={closeMenu} className="flex flex-col items-center gap-2"><FiUser size={24} /><span className="text-xs font-bold">Profile</span></Link>
-                    <Link to="/support" onClick={closeMenu} className="flex flex-col items-center gap-2"><FiHelpCircle size={24} /><span className="text-xs font-bold">Support</span></Link>
+            {/* 1. Backdrop for "More" Menu */}
+            <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-55 transition-opacity duration-300 ${isMoreOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`} onClick={closeMenu} />
+
+            {/* 2. "More" Menu Sheet (Remaining Options) */}
+            <div className={`fixed inset-x-0 bottom-0 z-60 bg-white dark:bg-[#12141c] rounded-t-[3rem] p-8 shadow-2xl transition-transform duration-500 ease-out ${isMoreOpen ? "translate-y-0" : "translate-y-full"}`}>
+                <div className="w-12 h-1.5 bg-gray-200 dark:bg-neutral-800 rounded-full mx-auto mb-10"></div>
+                <div className="grid grid-cols-2 gap-8 mb-6">
+                    <Link to="/support" onClick={closeMenu} className="flex flex-col items-center gap-3 p-4 bg-slate-50 dark:bg-white/5 rounded-3xl">
+                        <FiHelpCircle size={28} className="text-emerald-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Support</span>
+                    </Link>
+                    <button onClick={() => { localStorage.clear(); window.location.href = "/"; }} className="flex flex-col items-center gap-3 p-4 bg-red-500/5 rounded-3xl">
+                        <FiLogOut size={28} className="text-red-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-red-500">Logout</span>
+                    </button>
                 </div>
             </div>
-            <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-neutral-900 border-t py-3 pb-6 z-50 flex justify-around">
-                <Link to="/dashboard" className={isActive("/dashboard") ? "text-emerald-500" : "text-gray-400"}><FiHome size={22} /></Link>
-                <Link to="/history" className={isActive("/history") ? "text-emerald-500" : "text-gray-400"}><FiClock size={22} /></Link>
-                <Link to="/add" className="relative -top-5"><div className="p-4 rounded-full bg-emerald-500 text-white shadow-xl"><FiPlusCircle size={26} /></div></Link>
-                <button onClick={() => setIsMoreOpen(true)} className={isMoreOpen ? "text-emerald-500" : "text-gray-400"}><FiMoreHorizontal size={22} /></button>
+
+            {/* 3. Main Bottom Bar (The 5-Section Layout) */}
+            <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] bg-white/80 dark:bg-[#12141c]/80 backdrop-blur-3xl border border-white/20 dark:border-white/5 h-20 rounded-[2.5rem] flex items-center justify-around px-2 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] z-50">
+                
+                {/* LEFT SIDE: Dashboard & History */}
+                <Link to="/dashboard" className={`p-4 transition-all ${isActive("/dashboard") ? "text-emerald-500 scale-110" : "text-gray-400"}`}>
+                    <FiHome size={24} />
+                </Link>
+                <Link to="/history" className={`p-4 transition-all ${isActive("/history") ? "text-emerald-500 scale-110" : "text-gray-400"}`}>
+                    <FiClock size={24} />
+                </Link>
+
+                {/* CENTER: Add Button (Elevated) */}
+                <Link to="/add" className="relative -top-8 transition-transform active:scale-90">
+                    <div className="p-5 rounded-4xl bg-emerald-500 text-white shadow-[0_15px_30px_rgba(16,185,129,0.4)] border-4 border-slate-50 dark:border-[#0B0E14]">
+                        <FiPlusCircle size={30} />
+                    </div>
+                </Link>
+
+                {/* RIGHT SIDE: Profile & More */}
+                <Link to="/profile" className={`p-4 transition-all ${isActive("/profile") ? "text-emerald-500 scale-110" : "text-gray-400"}`}>
+                    <FiUser size={24} />
+                </Link>
+                <button onClick={() => setIsMoreOpen(true)} className={`p-4 transition-all ${isMoreOpen ? "text-emerald-500" : "text-gray-400"}`}>
+                    <FiMoreHorizontal size={24} />
+                </button>
             </nav>
         </>
     );

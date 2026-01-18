@@ -36,9 +36,9 @@ const Login = () => {
         // ⭐ Token aur User Details save karein
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify({
-            username: data.username,
-            email: data.email,
-            _id: data.userId
+            username: data.user.username,
+            email: data.user.email,
+            _id: data.user.id
         }));
         localStorage.setItem("lastEmail", cleanEmail);
         
