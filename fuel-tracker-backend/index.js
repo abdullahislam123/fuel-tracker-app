@@ -8,15 +8,18 @@ require('dotenv').config();
 // Models Import
 const FuelEntry = require('./models/FuelEntry');
 const User = require('./models/User');
-const Vehicle = require('./models/VehicleSelect'); // ⭐ Naya model import
+const Vehicle = require('./models/VehicleSelect');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "meraSecretKey123";
 
 // --- CORS CONFIGURATION ---
+// Localhost aur Live Server dono ko allow kiya hai
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5500",
+  "http://127.0.0.1:5500",
   "https://fuel-tracker-frontend.vercel.app"
 ];
 
@@ -25,7 +28,7 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('CORS Policy: This origin is not allowed'));
+      callback(new Error('CORS Policy Error: Origin not allowed'));
     }
   },
   credentials: true,
@@ -47,10 +50,10 @@ const authenticateToken = (req, res, next) => {
     ? authHeader.split(' ')[1]
     : authHeader;
 
-  if (!token) return res.status(401).json({ error: "Access Denied" });
+  if (!token) return res.status(401).json({ error: "Access Denied. Login Required." });
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: "Invalid Token" });
+    if (err) return res.status(403).json({ error: "Invalid or Expired Token" });
     req.user = user;
     next();
   });
@@ -62,18 +65,53 @@ app.get('/', (req, res) => {
   res.send('FUEL TRACKER Backend is LIVE! 🚀');
 });
 
-// 1. REGISTER & 2. LOGIN (Logic same rakhi hai)
-app.post('/register', async (req, res) => { /* ... existing logic ... */ });
-app.post('/login', async (req, res) => { /* ... existing logic ... */ });
+// 1. REGISTER
+app.post('/register', async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+        
+        // Validation
+        if(!username || !email || !password) return res.status(400).json({ error: "All fields are required" });
 
-// --- ⭐ NEW: VEHICLE MANAGEMENT ROUTES ---
+        const existingUser = await User.findOne({ email });
+        if (existingUser) return res.status(400).json({ error: "User with this email already exists" });
 
-// A. ADD NEW VEHICLE (Bike/Car/Custom)
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({ username, email, password: hashedPassword });
+        await newUser.save();
+
+        res.status(201).json({ message: "User registered successfully!" });
+    } catch (error) {
+        res.status(500).json({ error: "Registration failed. Database error." });
+    }
+});
+
+// 2. LOGIN
+app.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) return res.status(400).json({ error: "User not found" });
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ error: "Invalid password" });
+
+        const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' });
+        res.status(200).json({ 
+            token, 
+            user: { id: user._id, username: user.username, email: user.email } 
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Login failed" });
+    }
+});
+
+// --- VEHICLE MANAGEMENT ---
+
 app.post('/vehicles/add', authenticateToken, async (req, res) => {
   try {
     const { name, type, maintenanceInterval } = req.body;
-
-    // Bike: 1000km default, Car: 5000km default, Custom: User input
     let interval = maintenanceInterval;
     if (type === 'Bike') interval = 1000;
     else if (type === 'Car') interval = 5000;
@@ -93,7 +131,6 @@ app.post('/vehicles/add', authenticateToken, async (req, res) => {
   }
 });
 
-// B. GET ALL VEHICLES FOR LOGGED IN USER
 app.get('/vehicles', authenticateToken, async (req, res) => {
   try {
     const vehicles = await Vehicle.find({ userId: req.user.id });
@@ -103,99 +140,71 @@ app.get('/vehicles', authenticateToken, async (req, res) => {
   }
 });
 
-// --- ⭐ UPDATED: FUEL ENTRY WITH VEHICLE ID ---
+// --- FUEL ENTRIES ---
 
-// 3. ADD ENTRY (Improved with ownership check)
 app.post('/add', authenticateToken, async (req, res) => {
   try {
     const { vehicleId } = req.body;
-    if (!vehicleId) return res.status(400).json({ error: "Vehicle selection is required" });
+    if (!vehicleId) return res.status(400).json({ error: "Please select a vehicle" });
 
-    // ⭐ Check karein ke gaari usi user ki hai ya nahi
     const vehicle = await Vehicle.findOne({ _id: vehicleId, userId: req.user.id });
-    if (!vehicle) {
-      return res.status(403).json({ error: "Unauthorized: You do not own this vehicle" });
-    }
+    if (!vehicle) return res.status(403).json({ error: "Unauthorized vehicle access" });
 
     const newEntry = new FuelEntry({ ...req.body, userId: req.user.id });
     await newEntry.save();
-    res.status(201).json({ message: "Entry Saved!", data: newEntry });
+    res.status(201).json({ message: "Fuel entry saved!", data: newEntry });
   } catch (error) {
-    res.status(500).json({ error: "Save failed" });
+    res.status(500).json({ error: "Failed to save entry" });
   }
 });
 
-
-// 4. GET HISTORY (Ab vehicle filter ke sath)
 app.get('/history', authenticateToken, async (req, res) => {
   try {
-    const { vehicleId } = req.query; // Frontend se ?vehicleId=... bhejein
+    const { vehicleId } = req.query;
     const query = { userId: req.user.id };
     if (vehicleId) query.vehicleId = vehicleId;
 
     const entries = await FuelEntry.find(query).sort({ createdAt: -1 });
     res.status(200).json(entries);
   } catch (error) {
-    res.status(500).json({ error: "Fetch failed" });
+    res.status(500).json({ error: "Failed to fetch history" });
   }
 });
 
-// index.js mein is hisse ko update karein
-app.put('/fix-my-data', authenticateToken, async (req, res) => {
-    try {
-        // ⭐ Yahan apni Bike ki ID paste karein (MongoDB Compass se copy karke)
-        const BIKE_ID = "69665ec08c1e432e5912cbcd"; 
+// --- MAINTENANCE & DATA FIX ---
 
-        const result = await FuelEntry.updateMany(
-            { 
-                userId: req.user.id, 
-                vehicleId: { $exists: false } // Wo entries jin mein ID nahi hai
-            }, 
-            { 
-                $set: { vehicleId: BIKE_ID } // Unhein Bike ke sath jorr do
-            }
-        );
-
-        res.json({ message: "Success!", count: result.modifiedCount });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// --- ⭐ UPDATED: MAINTENANCE DATA PER VEHICLE ---
-
-app.get('/maintenance', authenticateToken, async (req, res) => {
-  try {
-    const { vehicleId } = req.query;
-    if (!vehicleId) return res.status(200).json([]);
-
-    const vehicle = await Vehicle.findOne({ _id: vehicleId, userId: req.user.id });
-    res.status(200).json(vehicle ? [vehicle] : []);
-  } catch (error) {
-    res.status(500).json({ error: "Maintenance fetch failed" });
-  }
-});
-
-// RESET MAINTENANCE (Oil Change Update)
 app.put('/maintenance/reset', authenticateToken, async (req, res) => {
   try {
     const { vehicleId, currentOdo } = req.body;
-    await Vehicle.findOneAndUpdate(
+    const updated = await Vehicle.findOneAndUpdate(
       { _id: vehicleId, userId: req.user.id },
-      { oilLastOdo: currentOdo }
+      { oilLastOdo: currentOdo },
+      { new: true }
     );
-    res.status(200).json({ message: "Maintenance reset successful!" });
+    res.status(200).json({ message: "Maintenance reset successful!", vehicle: updated });
   } catch (error) {
     res.status(500).json({ error: "Reset failed" });
   }
 });
 
-// 5, 6, 7, 8 (UPDATE/DELETE/PROFILE logic same rakhi hai)
+app.put('/fix-my-data', authenticateToken, async (req, res) => {
+    try {
+        const BIKE_ID = "69665ec08c1e432e5912cbcd"; 
+        const result = await FuelEntry.updateMany(
+            { userId: req.user.id, vehicleId: { $exists: false } }, 
+            { $set: { vehicleId: BIKE_ID } }
+        );
+        res.json({ message: "Cleanup complete!", count: result.modifiedCount });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // --- SERVER START ---
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`✅ Server is running on http://localhost:${PORT}`);
   });
 }
+
 module.exports = app;
