@@ -43,7 +43,7 @@ const Login = () => {
         localStorage.setItem("lastEmail", cleanEmail);
         
         // ⭐ UPDATED REDIRECT: Seedha Dashboard ke bajaye Selection Page par bhejein
-        navigate("/select-vehicle"); 
+        window.location.href = "/select-vehicle";
       } else {
         alert(data.error || "Invalid Credentials");
       }
