@@ -130,7 +130,50 @@ const calculateOilSystem = (history, vehicle) => {
         return { totalSpent, totalLiters, fuelAvg };
     }, [entries]);
 
-    if (loading) return <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center text-emerald-500 font-black italic text-4xl animate-pulse uppercase">Initializing System...</div>;
+    // --- 1. SKELETON COMPONENT (Khali boxes jo blink karenge) ---
+    const SkeletonLoader = () => (
+        <div className="animate-pulse space-y-6">
+            {/* Top Bar Skeleton */}
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-200 dark:bg-white/10 rounded-2xl"></div>
+                    <div className="space-y-2">
+                        <div className="h-2 w-20 bg-slate-200 dark:bg-white/10 rounded"></div>
+                        <div className="h-6 w-32 bg-slate-200 dark:bg-white/10 rounded"></div>
+                    </div>
+                </div>
+                <div className="w-24 h-10 bg-slate-200 dark:bg-white/10 rounded-xl"></div>
+            </div>
+
+            {/* Hero Section Skeleton */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="lg:col-span-8 h-80 bg-white/50 dark:bg-white/5 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 flex items-center justify-between">
+                    <div className="space-y-4">
+                        <div className="h-4 w-32 bg-slate-200 dark:bg-white/10 rounded"></div>
+                        <div className="h-24 w-48 bg-slate-200 dark:bg-white/10 rounded-3xl"></div>
+                        <div className="h-10 w-40 bg-slate-200 dark:bg-white/10 rounded-2xl"></div>
+                    </div>
+                    <div className="w-48 h-48 rounded-full border-8 border-slate-200 dark:border-white/10"></div>
+                </div>
+
+                {/* Right Side Stats Skeleton */}
+                <div className="lg:col-span-4 flex flex-col gap-6">
+                    <div className="flex-1 bg-white/50 dark:bg-white/5 rounded-[2.5rem] p-8 space-y-4">
+                        <div className="h-4 w-24 bg-slate-200 dark:bg-white/10 rounded"></div>
+                        <div className="h-12 w-full bg-slate-200 dark:bg-white/10 rounded-2xl"></div>
+                        <div className="h-12 w-full bg-slate-200 dark:bg-white/10 rounded-2xl"></div>
+                    </div>
+                    <div className="h-32 bg-emerald-500/20 rounded-[2.5rem]"></div>
+                </div>
+            </div>
+
+            {/* Bottom Bento Stats Skeleton */}
+            <div className="grid grid-cols-2 gap-6 mt-6">
+                <div className="h-32 bg-white/50 dark:bg-white/5 rounded-[2.5rem]"></div>
+                <div className="h-32 bg-white/50 dark:bg-white/5 rounded-[2.5rem]"></div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-[#0B0E14] transition-colors duration-500 p-4 md:p-6 max-w-300 mx-auto font-bold overflow-hidden flex flex-col justify-center">

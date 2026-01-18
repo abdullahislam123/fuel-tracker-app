@@ -8,3 +8,13 @@
     @apply transition-colors duration-300;
   }
 }
+/* index.css mein ye add karein */
+@keyframes loading-line {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+.animate-load {
+  animation: loading-line 1.5s ease-in-out forwards;
+}
