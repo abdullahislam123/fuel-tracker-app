@@ -1,151 +1,190 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiCalendar, FiClock, FiDroplet, FiDollarSign, FiActivity, FiArrowLeft, FiSave, FiZap, FiInfo, FiCheckCircle } from "react-icons/fi";
+import { 
+  FiDroplet, FiDollarSign, FiActivity, FiArrowLeft, 
+  FiSave, FiZap, FiInfo, FiCheckCircle, FiChevronDown, FiSettings
+} from "react-icons/fi";
 import { API_URL } from "../config"; 
+import { VehicleContext } from "../App"; // Global state integration
+
+const styles = {
+    card: "bg-white dark:bg-[#12141c] border border-slate-200 dark:border-white/5 shadow-2xl rounded-[3rem] p-6 md:p-10",
+    inputGroup: "relative mb-4",
+    label: "text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-4 mb-1 block",
+    input: "w-full bg-slate-100 dark:bg-neutral-800/60 p-4 rounded-2xl font-black text-xl text-emerald-500 outline-none border-2 border-transparent focus:border-emerald-500/30 transition-all italic pl-12",
+    icon: "absolute left-4 top-[65%] -translate-y-1/2 text-slate-400"
+};
 
 const AddFuel = () => {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [touched, setTouched] = useState({});
-  const [lastReading, setLastReading] = useState(null);
+    const navigate = useNavigate();
+    const { activeVehicle } = useContext(VehicleContext);
+    const [vehicles, setVehicles] = useState([]);
+    const [lastReading, setLastReading] = useState(0);
+    const [loading, setLoading] = useState(false);
 
-  const getCurrentTime = () => new Date().toTimeString().slice(0, 5);
+    const [formData, setFormData] = useState({
+        vehicleId: activeVehicle?._id || localStorage.getItem("activeVehicleId") || "",
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+        cost: "", 
+        liters: "", 
+        pricePerLiter: "", 
+        odometer: "" 
+    });
 
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    time: getCurrentTime(),
-    cost: "", 
-    liters: "", 
-    pricePerLiter: "", 
-    odometer: "" 
-  });
+    // ⭐ STEP 1: Sync Vehicles & Last Reading
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        
+        fetch(`${API_URL}/vehicles`, { headers: { 'Authorization': token } })
+            .then(res => res.json())
+            .then(vData => setVehicles(vData));
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    fetch(`${API_URL}/history`, { headers: { 'Authorization': token } })
-      .then(res => res.json())
-      .then(data => {
-        const dataArray = Array.isArray(data) ? data : (data.data || []);
-        if (dataArray.length > 0) {
-            const maxOdo = Math.max(...dataArray.map(e => parseFloat(e.odometer || 0)));
-            setLastReading(maxOdo);
+        if (formData.vehicleId) {
+            fetch(`${API_URL}/history?vehicleId=${formData.vehicleId}`, { 
+                headers: { 'Authorization': token } 
+            })
+            .then(res => res.json())
+            .then(data => {
+                const dataArray = Array.isArray(data) ? data : [];
+                if (dataArray.length > 0) {
+                    const maxOdo = Math.max(...dataArray.map(e => parseFloat(e.odometer || 0)));
+                    setLastReading(maxOdo);
+                } else {
+                    setLastReading(0);
+                }
+            });
         }
-      });
-  }, []);
+    }, [formData.vehicleId]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    let newFormData = { ...formData, [name]: value };
+    // Auto-calculate Total Cost
+    useEffect(() => {
+        const l = parseFloat(formData.liters || 0);
+        const p = parseFloat(formData.pricePerLiter || 0);
+        setFormData(prev => ({ ...prev, cost: (l * p).toFixed(2) }));
+    }, [formData.liters, formData.pricePerLiter]);
 
-    if (name === "liters" || name === "pricePerLiter") {
-      const l = parseFloat(name === "liters" ? value : formData.liters);
-      const p = parseFloat(name === "pricePerLiter" ? value : formData.pricePerLiter);
-      if (!isNaN(l) && !isNaN(p)) newFormData.cost = (l * p).toFixed(2); 
-    }
-    setFormData(newFormData);
-  };
+    const handleSave = async (e) => {
+        e.preventDefault();
+        if (parseFloat(formData.odometer) <= lastReading) {
+            alert(`Error: Odometer must be higher than ${lastReading} KM!`);
+            return;
+        }
 
-  const handleBlur = (field) => setTouched({ ...touched, [field]: true });
+        setLoading(true);
+        const token = localStorage.getItem("token"); 
+        try {
+            const response = await fetch(`${API_URL}/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                body: JSON.stringify(formData)
+            });
 
-  const isInvalid = (field) => {
-    if (field === 'odometer') {
-        return touched[field] && (!formData[field] || parseFloat(formData[field]) <= lastReading);
-    }
-    return touched[field] && !formData[field];
-  };
+            if (response.ok) {
+                // ⭐ Update Local Storage so Dashboard decreases KM instantly
+                localStorage.setItem(`odo_${formData.vehicleId}`, formData.odometer);
+                navigate("/dashboard");
+            }
+        } catch (error) { 
+            alert("Save failed!"); 
+        } finally { 
+            setLoading(false); 
+        }
+    };
 
-  const handleSave = async () => {
-    if (!formData.cost || !formData.liters || !formData.odometer) {
-      alert("Fields missing! Odometer, Liters and Rate are mandatory.");
-      return;
-    }
-    if (parseFloat(formData.odometer) <= lastReading) {
-      alert(`Odometer reading must be higher than ${lastReading} KM`);
-      return;
-    }
-    setLoading(true);
-    const token = localStorage.getItem("token"); 
-    try {
-      const response = await fetch(`${API_URL}/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': token },
-        body: JSON.stringify({ ...formData, liters: parseFloat(formData.liters), pricePerLiter: parseFloat(formData.pricePerLiter), odometer: parseFloat(formData.odometer) })
-      });
-      if (response.ok) {
-        localStorage.removeItem("manualOdo");
-        navigate("/dashboard");
-      }
-    } catch (error) { alert("Server error!"); } finally { setLoading(false); }
-  };
+    return (
+        <div className="min-h-screen bg-slate-50 dark:bg-[#0B0E14] p-4 flex flex-col items-center justify-center font-bold overflow-hidden">
+            <div className="w-full max-w-lg animate-fade-in">
+                
+                {/* Compact Header */}
+                <header className="flex items-center justify-between mb-6 px-2">
+                    <button onClick={() => navigate(-1)} className="p-3 bg-white dark:bg-[#12141c] rounded-xl shadow-md dark:text-white active:scale-90 transition-all">
+                        <FiArrowLeft size={20} />
+                    </button>
+                    <div className="text-right">
+                        <h2 className="text-xl font-black italic dark:text-white uppercase leading-none">New <span className="text-emerald-500">Entry</span></h2>
+                        <p className="text-[8px] text-slate-400 uppercase tracking-widest mt-1">Recalibrating Cycle...</p>
+                    </div>
+                </header>
 
-  const getInputClass = (field) => `
-    w-full p-4 pl-12 bg-slate-50 dark:bg-neutral-800/40 border-2 rounded-[1.5rem] outline-none transition-all font-bold text-slate-700 dark:text-white
-    ${isInvalid(field) ? "border-red-400 bg-red-50/30" : "border-transparent focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"}
-  `;
+                <form onSubmit={handleSave} className={styles.card}>
+                    
+                    {/* Vehicle Selector */}
+                    <div className={styles.inputGroup}>
+                        <label className={styles.label}>Selected Ride</label>
+                        <FiSettings className={styles.icon} />
+                        <select 
+                            value={formData.vehicleId} 
+                            onChange={(e) => setFormData({...formData, vehicleId: e.target.value})}
+                            className={styles.input + " appearance-none cursor-pointer"}
+                        >
+                            {vehicles.map(v => <option key={v._id} value={v._id} className="dark:bg-[#12141c]">{v.name}</option>)}
+                        </select>
+                        <FiChevronDown className="absolute right-4 top-[65%] -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
 
-  return (
-    <div className="max-w-3xl mx-auto pb-20 px-4 animate-fade-in">
-      <header className="flex items-center gap-4 mb-10 pt-8">
-        <button onClick={() => navigate(-1)} className="p-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border dark:border-neutral-800 active:scale-90 transition-transform">
-          <FiArrowLeft size={20} className="text-emerald-500" />
-        </button>
-        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter italic">Refill <span className="text-emerald-500">Log</span></h2>
-      </header>
-      
-      <div className="bg-white dark:bg-neutral-900 p-8 md:p-12 rounded-[3.5rem] shadow-2xl border dark:border-neutral-800 relative">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
-          {/* ⭐ Odometer: Remainder Added */}
-          <div className="md:col-span-2 bg-emerald-500/5 p-6 rounded-[2.5rem] border border-dashed border-emerald-500/20">
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2"><FiActivity /> Odometer (KM)</label>
-              {lastReading && <span className="text-[9px] font-black text-emerald-500">Last: {lastReading} KM</span>}
+                    {/* ⭐ Odometer (Primary for countdown tracking) */}
+                    <div className="bg-emerald-500/5 p-5 rounded-4xl border border-dashed border-emerald-500/20 mb-4">
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1"><FiActivity /> Odometer (KM)</label>
+                            {lastReading > 0 && <span className="text-[8px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">Last: {lastReading}</span>}
+                        </div>
+                        <div className="relative">
+                            <FiZap className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 z-10" />
+                            <input 
+                                required type="number" step="0.1"
+                                className="w-full p-4 pl-12 bg-white dark:bg-neutral-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white outline-none border-2 border-transparent focus:border-emerald-500 italic shadow-sm"
+                                value={formData.odometer}
+                                onChange={(e) => setFormData({...formData, odometer: e.target.value})}
+                                placeholder="0.0"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className={styles.inputGroup}>
+                            <label className={styles.label}>Liters</label>
+                            <FiDroplet className={styles.icon} />
+                            <input 
+                                required type="number" step="0.01" 
+                                className={styles.input} 
+                                value={formData.liters}
+                                onChange={(e) => setFormData({...formData, liters: e.target.value})}
+                                placeholder="5.0"
+                            />
+                        </div>
+                        <div className={styles.inputGroup}>
+                            <label className={styles.label}>Price/L</label>
+                            <FiDollarSign className={styles.icon} />
+                            <input 
+                                required type="number" step="0.01" 
+                                className={styles.input} 
+                                value={formData.pricePerLiter}
+                                onChange={(e) => setFormData({...formData, pricePerLiter: e.target.value})}
+                                placeholder="267"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Total Display */}
+                    <div className="bg-slate-900 p-6 rounded-4xl flex items-center justify-between mt-2 shadow-inner">
+                         <div className="flex items-center gap-2">
+                            <FiCheckCircle className="text-emerald-500" size={20} />
+                            <span className="text-sm font-black text-white italic uppercase tracking-tighter">Total Bill</span>
+                         </div>
+                         <div className="text-2xl font-black text-emerald-500 tracking-tighter">Rs. {formData.cost}</div>
+                    </div>
+
+                    <button 
+                        type="submit" disabled={loading}
+                        className="w-full mt-6 py-5 bg-emerald-500 text-white rounded-4xl font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/30 active:scale-95 transition-all text-xs flex items-center justify-center gap-2"
+                    >
+                        {loading ? "SYNCING..." : <><FiSave size={18} /> Update Logs & Countdown</>}
+                    </button>
+                </form>
             </div>
-            <div className="relative">
-              <FiZap className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 z-10" />
-              <input type="number" step="0.1" name="odometer" placeholder="Enter meter reading..." value={formData.odometer} onChange={handleInputChange} onBlur={() => handleBlur('odometer')} className={getInputClass('odometer')} />
-            </div>
-            <p className="text-[9px] text-slate-400 mt-2 ml-1 font-bold italic flex items-center gap-1">
-               <FiInfo /> Tip: Daily meter reading yahan update karne se "Oil Life %" accurate rahegi.
-            </p>
-          </div>
-
-          {/* Liters: Remainder Added */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Liters</label>
-            <div className="relative">
-              <FiDroplet className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" />
-              <input type="number" step="0.01" name="liters" placeholder="0.00" value={formData.liters} onChange={handleInputChange} onBlur={() => handleBlur('liters')} className={getInputClass('liters')} />
-            </div>
-            <p className="text-[9px] text-slate-400 ml-1 font-medium">Machine se liters dekh kar likhein (Average calculation ke liye).</p>
-          </div>
-          
-          {/* Rate: Remainder Added */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Price Per Liter</label>
-            <div className="relative">
-              <FiDollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" />
-              <input type="number" step="0.01" name="pricePerLiter" placeholder="e.g. 264.7" value={formData.pricePerLiter} onChange={handleInputChange} onBlur={() => handleBlur('pricePerLiter')} className={getInputClass('pricePerLiter')} />
-            </div>
-            <p className="text-[9px] text-slate-400 ml-1 font-medium">Aaj ka petrol rate. Total bill khud calculate ho jaye ga.</p>
-          </div>
-
-          {/* Auto-Calculated Total */}
-          <div className="md:col-span-2 bg-slate-900 dark:bg-black/20 p-8 rounded-[2.5rem] flex items-center justify-between">
-             <div className="flex items-center gap-3">
-                <FiCheckCircle className="text-emerald-500" size={24} />
-                <span className="text-xl font-black text-white italic">Total Bill</span>
-             </div>
-             <div className="text-4xl font-black text-emerald-500 tracking-tighter">Rs. {formData.cost || "0.00"}</div>
-          </div>
         </div>
-
-        <button onClick={handleSave} disabled={loading} className="w-full mt-10 py-6 text-white font-black bg-emerald-500 rounded-[2.5rem] hover:bg-emerald-600 shadow-2xl shadow-emerald-500/30 transition-all flex items-center justify-center gap-3 active:scale-[0.98] uppercase tracking-widest text-xs">
-          {loading ? "SAVING..." : <><FiSave size={20} /> Save Entry</>}
-        </button>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default AddFuel;
