@@ -73,11 +73,11 @@ app.post('/register', async (req, res) => {
         // Validation
         if(!username || !email || !password) return res.status(400).json({ error: "All fields are required" });
 
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) return res.status(400).json({ error: "User with this email already exists" });
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ username, email, password: hashedPassword });
+        const newUser = new User({ username, email: email.toLowerCase(), password: hashedPassword });
         await newUser.save();
 
         res.status(201).json({ message: "User registered successfully!" });
@@ -90,7 +90,7 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: email.toLowerCase() });
 
         if (!user) return res.status(400).json({ error: "User not found" });
 
