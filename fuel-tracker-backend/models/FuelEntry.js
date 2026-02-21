@@ -14,6 +14,7 @@ const FuelEntrySchema = new mongoose.Schema({
   pricePerLiter: { type: Number, required: true },
   cost: { type: Number, required: true },
   odometer: { type: Number, required: true },
+  receiptImage: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 

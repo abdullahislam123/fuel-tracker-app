@@ -3,6 +3,9 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer'); // ⭐ Naya: Files ke liye
+const path = require('path'); // ⭐ Naya: Paths ke liye
+const fs = require('fs'); // ⭐ Naya: Folder banane ke liye
 require('dotenv').config();
 
 // Models Import
@@ -14,8 +17,28 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "meraSecretKey123";
 
+// --- ⭐ MULTER CONFIGURATION (Image Storage) ---
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir); // Agar 'uploads' folder nahi hai to bana do
+}
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        // File ka naam unique banane ke liye timestamp add karna
+        cb(null, Date.now() + '-' + file.originalname);
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // Limit: 5MB
+});
+
 // --- CORS CONFIGURATION ---
-// Localhost aur Live Server dono ko allow kiya hai
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5500",
@@ -37,6 +60,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
+// ⭐ Naya: Uploads folder ko static banayein taake frontend se images access ho sakein
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- DATABASE CONNECT ---
 mongoose.connect(process.env.MONGO_URI)
@@ -65,17 +90,15 @@ app.get('/', (req, res) => {
   res.send('FUEL TRACKER Backend is LIVE! 🚀');
 });
 
-// 1. REGISTER
+// 1. REGISTER & LOGIN (Pehle wala code same rahega...)
 app.post('/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
-        console.log("Registration data received:", { username, email }); // Debugging line
-
-        if (!email) return res.status(400).json({ error: "Email is missing from request" });
+        if (!email) return res.status(400).json({ error: "Email is missing" });
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = new User({ 
-            username: username, 
+            username, 
             email: email.toLowerCase(), 
             password: hashedPassword 
         });
@@ -83,14 +106,11 @@ app.post('/register', async (req, res) => {
         await newUser.save();
         res.status(201).json({ message: "User registered successfully!" });
     } catch (error) {
-        // ⭐ YE LINE AAPKO TERMINAL MEIN ASLI ERROR DIKHAYEGI:
-        console.error("DETAILED DATABASE ERROR:", error); 
-        
-        res.status(500).json({ error: error.message || "Registration failed." });
+        console.error("REGISTER ERROR:", error);
+        res.status(500).json({ error: "Registration failed." });
     }
 });
 
-// 2. LOGIN
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -112,6 +132,19 @@ app.post('/login', async (req, res) => {
 });
 
 // --- VEHICLE MANAGEMENT ---
+
+app.delete('/vehicles/:id', authenticateToken, async (req, res) => {
+    try {
+        const vehicleId = req.params.id;
+        const userId = req.user.id;
+        const deletedVehicle = await Vehicle.findOneAndDelete({ _id: vehicleId, userId: userId });
+        if (!deletedVehicle) return res.status(404).json({ error: "Vehicle not found" });
+        await FuelEntry.deleteMany({ vehicleId: vehicleId });
+        res.json({ message: "Vehicle and history deleted successfully!" });
+    } catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 
 app.post('/vehicles/add', authenticateToken, async (req, res) => {
   try {
@@ -144,9 +177,9 @@ app.get('/vehicles', authenticateToken, async (req, res) => {
   }
 });
 
-// --- FUEL ENTRIES ---
+// --- ⭐ FUEL ENTRIES (Image Support Add Ki Hai) ---
 
-app.post('/add', authenticateToken, async (req, res) => {
+app.post('/add', authenticateToken, upload.single('receiptImage'), async (req, res) => {
   try {
     const { vehicleId } = req.body;
     if (!vehicleId) return res.status(400).json({ error: "Please select a vehicle" });
@@ -154,10 +187,17 @@ app.post('/add', authenticateToken, async (req, res) => {
     const vehicle = await Vehicle.findOne({ _id: vehicleId, userId: req.user.id });
     if (!vehicle) return res.status(403).json({ error: "Unauthorized vehicle access" });
 
-    const newEntry = new FuelEntry({ ...req.body, userId: req.user.id });
+    // FormData se aane wala data hamesha string hota hai, isliye hum req.body use karenge
+    const newEntry = new FuelEntry({ 
+        ...req.body, 
+        userId: req.user.id,
+        receiptImage: req.file ? `/uploads/${req.file.filename}` : null // Image path save karein
+    });
+
     await newEntry.save();
     res.status(201).json({ message: "Fuel entry saved!", data: newEntry });
   } catch (error) {
+    console.error("ADD ENTRY ERROR:", error);
     res.status(500).json({ error: "Failed to save entry" });
   }
 });
@@ -175,7 +215,7 @@ app.get('/history', authenticateToken, async (req, res) => {
   }
 });
 
-// --- MAINTENANCE & DATA FIX ---
+// --- MAINTENANCE & PROFILE ---
 
 app.put('/maintenance/reset', authenticateToken, async (req, res) => {
   try {
@@ -190,13 +230,12 @@ app.put('/maintenance/reset', authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Reset failed" });
   }
 });
-// index.js mein add karein
+
 app.put('/profile', authenticateToken, async (req, res) => {
     try {
         const { username, email, password } = req.body;
         const updateData = { username, email: email.toLowerCase() };
 
-        // Agar user ne naya password diya hai, to hash karke update karein
         if (password && password.trim() !== "") {
             const hashedPassword = await bcrypt.hash(password, 10);
             updateData.password = hashedPassword;
@@ -205,25 +244,12 @@ app.put('/profile', authenticateToken, async (req, res) => {
         const updatedUser = await User.findByIdAndUpdate(
             req.user.id, 
             { $set: updateData }, 
-            { new: true } // Updated data wapas bhejne ke liye
+            { new: true }
         ).select("-password");
 
         res.status(200).json({ message: "Profile Updated!", user: updatedUser });
     } catch (error) {
         res.status(500).json({ error: "Update failed in database" });
-    }
-});
-
-app.put('/fix-my-data', authenticateToken, async (req, res) => {
-    try {
-        const BIKE_ID = "69665ec08c1e432e5912cbcd"; 
-        const result = await FuelEntry.updateMany(
-            { userId: req.user.id, vehicleId: { $exists: false } }, 
-            { $set: { vehicleId: BIKE_ID } }
-        );
-        res.json({ message: "Cleanup complete!", count: result.modifiedCount });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
     }
 });
 

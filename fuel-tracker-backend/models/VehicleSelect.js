@@ -1,37 +1,37 @@
 const mongoose = require('mongoose');
 
 const VehicleSchema = new mongoose.Schema({
-  // ⭐ Is gaari ka malik kaun hai (User ID)
+  // ⭐ Owner of the vehicle
   userId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
     required: true 
   },
-  // ⭐ Gaari ka naam (e.g., "My Honda 70" ya "Family Car")
+  // ⭐ Vehicle Name
   name: { 
     type: String, 
-    required: true 
+    required: true,
+    trim: true // Faltu spaces khatam karne ke liye
   },
-  // ⭐ Type: Bike, Car, ya Custom
+  // ⭐ Type: Bike, Car, Custom
   type: { 
     type: String, 
     enum: ['Bike', 'Car', 'Custom'], 
     default: 'Bike' 
   },
-  // ⭐ Maintenance Gap (Bike: 1000km, Car: 5000km, Custom: User defined)
+  // ⭐ Gap (KM)
   maintenanceInterval: { 
     type: Number, 
     required: true 
   },
-  // ⭐ Aakhri dafa oil kab change hua (Odometer reading)
+  // ⭐ Last oil change odometer reading
   oilLastOdo: { 
     type: Number, 
     default: 0 
-  },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
   }
+}, { 
+  // ⭐ Ye automatically 'createdAt' aur 'updatedAt' fields add kar dega
+  timestamps: true 
 });
 
 module.exports = mongoose.model('Vehicle', VehicleSchema);
