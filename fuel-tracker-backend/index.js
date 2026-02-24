@@ -17,36 +17,33 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "meraSecretKey123";
 
-// --- CORS CONFIGURATION (Manual for Vercel Reliability) ---
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    "http://localhost:5173",
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-    "https://fuel-tracker-frontend.vercel.app"
-  ];
+// --- CORS CONFIGURATION (Standard and Robust) ---
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://fuel-tracker-frontend.vercel.app"
+];
 
-  const isAllowed = !origin ||
-    allowedOrigins.includes(origin) ||
-    origin.includes("vercel.app") ||
-    origin.includes("localhost");
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Log incoming origin for debugging in Vercel logs
+    console.log("📍 Incoming Origin:", origin);
 
-  if (isAllowed && origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
+    if (!origin || allowedOrigins.includes(origin) || origin.includes("vercel.app") || origin.includes("localhost")) {
+      callback(null, true);
+    } else {
+      console.log("❌ CORS Blocked Origin:", origin);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "X-Api-Version"],
+  optionsSuccessStatus: 200
+};
 
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization, Accept, Origin, X-Api-Version');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  next();
-});
+// Handle ALL preflight requests immediately
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 
 // --- ⭐ MULTER CONFIGURATION (Image Storage) ---
 const uploadDir = path.join(__dirname, 'uploads');
@@ -106,6 +103,17 @@ const authenticateToken = (req, res, next) => {
 
 app.get('/', (req, res) => {
   res.send('FUEL TRACKER Backend is LIVE! 🚀');
+});
+
+// Diagnostic route for live debugging
+app.get('/health-check', async (req, res) => {
+  const dbStatus = mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
+  res.json({
+    status: "Healthy",
+    database: dbStatus,
+    timestamp: new Date().toISOString(),
+    env_verified: !!process.env.MONGO_URI && !!process.env.JWT_SECRET
+  });
 });
 
 app.post('/register', async (req, res) => {
