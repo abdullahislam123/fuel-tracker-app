@@ -3,9 +3,9 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const multer = require('multer'); // ⭐ Naya: Files ke liye
-const path = require('path'); // ⭐ Naya: Paths ke liye
-const fs = require('fs'); // ⭐ Naya: Folder banane ke liye
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 // Models Import
@@ -17,10 +17,45 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "meraSecretKey123";
 
+// --- CORS CONFIGURATION (Manual for Vercel Reliability) ---
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+    "https://fuel-tracker-frontend.vercel.app"
+  ];
+
+  const isAllowed = !origin ||
+    allowedOrigins.includes(origin) ||
+    origin.includes("vercel.app") ||
+    origin.includes("localhost");
+
+  if (isAllowed && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization, Accept, Origin, X-Api-Version');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
 // --- ⭐ MULTER CONFIGURATION (Image Storage) ---
 const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir); // Agar 'uploads' folder nahi hai to bana do
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (err) {
+  console.log("⚠️ Upload folder creation skipped (Vercel)");
 }
 
 const storage = multer.diskStorage({
@@ -28,52 +63,16 @@ const storage = multer.diskStorage({
     cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
-    // File ka naam unique banane ke liye timestamp add karna
     cb(null, Date.now() + '-' + file.originalname);
   }
 });
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 } // Limit: 5MB
-});
-
-// --- CORS CONFIGURATION ---
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5500",
-  "http://127.0.0.1:5500",
-  "https://fuel-tracker-frontend.vercel.app"
-];
-
-// --- CORS CONFIGURATION (Manual for Vercel Reliability) ---
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  // Allow all Vercel subdomains and localhost (permissive check)
-  const isAllowed = !origin ||
-    origin.includes("vercel.app") ||
-    origin.includes("localhost") ||
-    origin.includes("127.0.0.1");
-
-  if (isAllowed) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  }
-
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization, Accept, Origin, X-Api-Version');
-
-  // Handle preflight (OPTIONS)
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  next();
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 app.use(express.json());
-// ⭐ Naya: Uploads folder ko static banayein taake frontend se images access ho sakein
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- DATABASE CONNECT ---
@@ -84,8 +83,6 @@ mongoose.connect(process.env.MONGO_URI)
 // --- SECURITY MIDDLEWARE ---
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  console.log("Auth Header Received:", authHeader);
-
   let token = authHeader && authHeader.startsWith('Bearer ')
     ? authHeader.split(' ')[1]
     : authHeader;
@@ -93,13 +90,11 @@ const authenticateToken = (req, res, next) => {
   if (token === "null" || token === "undefined") token = null;
 
   if (!token) {
-    console.log("No token found in request.");
     return res.status(401).json({ error: "Access Denied. Login Required." });
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      console.log("JWT Verification Error:", err.message);
       return res.status(403).json({ error: "Invalid or Expired Token" });
     }
     req.user = user;
@@ -113,7 +108,6 @@ app.get('/', (req, res) => {
   res.send('FUEL TRACKER Backend is LIVE! 🚀');
 });
 
-// 1. REGISTER & LOGIN (Pehle wala code same rahega...)
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -154,8 +148,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// --- VEHICLE MANAGEMENT ---
-
 app.delete('/vehicles/:id', authenticateToken, async (req, res) => {
   try {
     const vehicleId = req.params.id;
@@ -170,8 +162,7 @@ app.delete('/vehicles/:id', authenticateToken, async (req, res) => {
       }
     }
     await FuelEntry.deleteMany({ vehicleId: vehicleId, userId: userId });
-
-    const deletedVehicle = await Vehicle.findOneAndDelete({ _id: vehicleId, userId: userId });
+    await Vehicle.findOneAndDelete({ _id: vehicleId, userId: userId });
     res.json({ message: "Vehicle and history deleted successfully!" });
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
@@ -209,8 +200,6 @@ app.get('/vehicles', authenticateToken, async (req, res) => {
   }
 });
 
-// --- ⭐ FUEL ENTRIES (Image Support Add Ki Hai) ---
-
 app.post('/add', authenticateToken, upload.single('receiptImage'), async (req, res) => {
   try {
     const { vehicleId } = req.body;
@@ -219,16 +208,14 @@ app.post('/add', authenticateToken, upload.single('receiptImage'), async (req, r
     const vehicle = await Vehicle.findOne({ _id: vehicleId, userId: req.user.id });
     if (!vehicle) return res.status(403).json({ error: "Unauthorized vehicle access" });
 
-    // ⭐ Fetch username dynamically since it's now required in the model
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    // FormData se aane wala data hamesha string hota hai, isliye hum req.body use karenge
     const newEntry = new FuelEntry({
       ...req.body,
       userId: req.user.id,
-      username: user.username, // Set username from the user document
-      receiptImage: req.file ? `/uploads/${req.file.filename}` : null // Image path save karein
+      username: user.username,
+      receiptImage: req.file ? `/uploads/${req.file.filename}` : null
     });
 
     await newEntry.save();
@@ -251,8 +238,6 @@ app.get('/history', authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch history" });
   }
 });
-
-// --- MAINTENANCE & PROFILE ---
 
 app.put('/maintenance/reset', authenticateToken, async (req, res) => {
   try {
@@ -304,7 +289,6 @@ app.delete('/profile', authenticateToken, async (req, res) => {
     }
     await Vehicle.deleteMany({ userId: userId });
     await FuelEntry.deleteMany({ userId: userId });
-    // Delete the user themselves
     await User.findByIdAndDelete(userId);
 
     res.status(200).json({ message: "Account deleted successfully" });
@@ -320,7 +304,6 @@ app.delete('/delete/:id', authenticateToken, async (req, res) => {
     const entry = await FuelEntry.findOne({ _id: entryId, userId: userId });
     if (!entry) return res.status(404).json({ error: "Entry not found" });
 
-    // File delete karein agar mojood hai
     if (entry.receiptImage) {
       const filePath = path.join(__dirname, entry.receiptImage);
       if (fs.existsSync(filePath)) {
@@ -329,7 +312,7 @@ app.delete('/delete/:id', authenticateToken, async (req, res) => {
     }
 
     await FuelEntry.findByIdAndDelete(entryId);
-    res.json({ message: "Entry and image deleted successfully!" });
+    res.json({ message: "Entry deleted successfully!" });
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }
@@ -341,30 +324,17 @@ app.put('/update/:id', authenticateToken, upload.single('receiptImage'), async (
     const userId = req.user.id;
     const { odometer, liters, pricePerLiter, cost, removeImage } = req.body;
 
-    const updateData = {
-      odometer,
-      liters,
-      pricePerLiter,
-      cost
-    };
+    const updateData = { odometer, liters, pricePerLiter, cost };
 
     const entry = await FuelEntry.findOne({ _id: entryId, userId: userId });
     if (!entry) return res.status(404).json({ error: "Entry not found" });
 
     if (req.file || removeImage === 'true') {
-      // Purani file delete karein
       if (entry.receiptImage) {
         const oldPath = path.join(__dirname, entry.receiptImage);
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-
-      if (req.file) {
-        updateData.receiptImage = `/uploads/${req.file.filename}`;
-      } else {
-        updateData.receiptImage = null;
-      }
+      updateData.receiptImage = req.file ? `/uploads/${req.file.filename}` : null;
     }
 
     const updatedEntry = await FuelEntry.findOneAndUpdate(
@@ -373,10 +343,8 @@ app.put('/update/:id', authenticateToken, upload.single('receiptImage'), async (
       { new: true }
     );
 
-    if (!updatedEntry) return res.status(404).json({ error: "Entry not found" });
     res.status(200).json({ message: "Entry updated!", data: updatedEntry });
   } catch (error) {
-    console.error("UPDATE ENTRY ERROR:", error);
     res.status(500).json({ error: "Failed to update entry" });
   }
 });
@@ -384,6 +352,9 @@ app.put('/update/:id', authenticateToken, upload.single('receiptImage'), async (
 // --- GLOBAL ERROR HANDLER ---
 app.use((err, req, res, next) => {
   console.error("❌ GLOBAL ERROR CAUGHT:", err);
+  // Ensure CORS headers even on errors
+  const origin = req.headers.origin;
+  if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
   res.status(500).json({ error: "Something went wrong on the server!" });
 });
 
