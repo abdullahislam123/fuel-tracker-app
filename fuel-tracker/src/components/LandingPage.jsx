@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaGasPump } from "react-icons/fa";
-import { FiArrowRight, FiActivity, FiZap, FiShield, FiMoon, FiSun, FiCpu, FiBarChart2, FiNavigation, FiMapPin } from "react-icons/fi";
+import { FiArrowRight, FiActivity, FiZap, FiShield, FiMoon, FiSun, FiCpu, FiBarChart2, FiNavigation, FiMapPin, FiGithub, FiLinkedin, FiInstagram } from "react-icons/fi";
 import { ThemeContext } from "../context/Themecontext";
 
 const LandingPage = () => {
@@ -215,7 +215,25 @@ const LandingPage = () => {
                     <FaGasPump size={20} />
                     <span className="text-slate-900 dark:text-white uppercase font-black tracking-widest text-sm">FuelTracker</span>
                 </div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.6em] italic opacity-40">© 2026 FuelTracker // Simple Fuel Management</p>
+
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic opacity-40 mb-8">
+                    Made with Live By <span className="text-emerald-500">Abdullah</span>
+                </p>
+
+                <div className="flex justify-center gap-8 mb-12">
+                    <a href="https://github.com/abdullahislam123" target="_blank" rel="noopener noreferrer" className="p-3 bg-white dark:bg-white/5 rounded-2xl text-slate-400 hover:text-emerald-500 transition-all shadow-xl hover:scale-110 active:scale-95">
+                        <FiGithub size={20} />
+                    </a>
+                    <a href="https://linkedin.com/in/abdullahislam123" target="_blank" rel="noopener noreferrer" className="p-3 bg-white dark:bg-white/5 rounded-2xl text-slate-400 hover:text-blue-500 transition-all shadow-xl hover:scale-110 active:scale-95">
+                        <FiLinkedin size={20} />
+                    </a>
+                    <a href="https://instagram.com/abdullah_islam__" target="_blank" rel="noopener noreferrer" className="p-3 bg-white dark:bg-white/5 rounded-2xl text-slate-400 hover:text-pink-500 transition-all shadow-xl hover:scale-110 active:scale-95">
+                        <FiInstagram size={20} />
+                    </a>
+                </div>
+
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.6em] italic opacity-40">© 2026 FuelTracker // Simple Fuel Management</p>
+
                 <div className="mt-8 flex justify-center gap-12 opacity-30 grayscale hover:opacity-100 transition-all duration-700">
                     <FiCpu /> <FiActivity /> <FiZap /> <FiShield />
                 </div>

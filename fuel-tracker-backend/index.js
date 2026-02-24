@@ -60,6 +60,9 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 }));
 
+// Handle preflight requests for all routes
+app.options('*', cors());
+
 app.use(express.json());
 // ⭐ Naya: Uploads folder ko static banayein taake frontend se images access ho sakein
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
