@@ -46,22 +46,31 @@ const allowedOrigins = [
   "https://fuel-tracker-frontend.vercel.app"
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allows localhost and any Vercel deployment of this project
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith("vercel.app")) {
-      callback(null, true);
-    } else {
-      callback(null, false);
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
-}));
+// --- CORS CONFIGURATION (Manual for Vercel Reliability) ---
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-// Handle preflight requests for all routes
-app.options('*', cors());
+  // Allow all Vercel subdomains and localhost
+  const isAllowed = !origin ||
+    allowedOrigins.includes(origin) ||
+    origin.endsWith("vercel.app") ||
+    origin.includes("localhost");
+
+  if (isAllowed) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization, Accept, Origin');
+
+  // Handle preflight (OPTIONS)
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  next();
+});
 
 app.use(express.json());
 // ⭐ Naya: Uploads folder ko static banayein taake frontend se images access ho sakein
