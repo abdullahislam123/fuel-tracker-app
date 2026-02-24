@@ -19,33 +19,33 @@ const LandingPage = () => {
 
     const features = [
         {
-            icon: <FiActivity size={32} />,
-            title: "Track Easily",
-            desc: "Keep a simple record of your fuel and mileage. No complex math required.",
-            color: "text-emerald-500",
-            bg: "bg-emerald-500/10",
-            hover: "group-hover:bg-emerald-500"
-        },
-        {
-            icon: <FiCpu size={32} />,
-            title: "Multiple Vehicles",
-            desc: "Register and track all your cars and bikes in one place.",
+            icon: <FiNavigation size={32} />,
+            title: "Trip Estimator",
+            desc: "Project your fuel costs and liters needed for any trip before you start driving.",
             color: "text-blue-500",
             bg: "bg-blue-500/10",
             hover: "group-hover:bg-blue-500"
         },
         {
-            icon: <FiShield size={32} />,
-            title: "Safe & Secure",
-            desc: "Your data is private and securely stored in your personal account.",
+            icon: <FiMapPin size={32} />,
+            title: "Station Finder",
+            desc: "Locate nearby petrol stations instantly with real-time navigation support.",
+            color: "text-emerald-500",
+            bg: "bg-emerald-500/10",
+            hover: "group-hover:bg-emerald-500"
+        },
+        {
+            icon: <FiActivity size={32} />,
+            title: "Performance Tracking",
+            desc: "Monitor your vehicle's efficiency and maintenance with smart analytics.",
             color: "text-purple-500",
             bg: "bg-purple-500/10",
             hover: "group-hover:bg-purple-500"
         },
         {
-            icon: <FiZap size={32} />,
-            title: "Auto-Sync",
-            desc: "Access your fuel logs from any device, anytime.",
+            icon: <FiShield size={32} />,
+            title: "Safe & Secure",
+            desc: "Your data is private and securely stored in your personal account.",
             color: "text-orange-500",
             bg: "bg-orange-500/10",
             hover: "group-hover:bg-orange-500"
