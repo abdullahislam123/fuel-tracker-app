@@ -1,145 +1,110 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-// Icons
-import { FaGasPump } from "react-icons/fa";
-import { FiEye, FiEyeOff, FiMail, FiLock, FiCheckCircle } from "react-icons/fi"; 
-// Central API Config
-import { API_URL } from "../config"; 
+import React, { useState, useContext } from "react";
+import { FiMail, FiLock, FiArrowRight, FiShield, FiEye, FiEyeOff } from "react-icons/fi";
+import { useNavigate, Link } from "react-router-dom";
+import { API_URL } from "../config";
+import { ThemeContext } from "../context/Themecontext";
+import { AuthContext } from "../context/AuthContext";
 
 const Login = () => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "" });
-  const [showPassword, setShowPassword] = useState(false); 
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const { theme } = useContext(ThemeContext);
+  const { setIsAuth } = useContext(AuthContext);
+  const navigate = useNavigate();
 
-  // Email persistence logic
-  useEffect(() => {
-    const savedEmail = localStorage.getItem("lastEmail");
-    if(savedEmail) {
-        setFormData(prev => ({ ...prev, email: savedEmail }));
-    }
-  }, []);
-
-  const handleLogin = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
     try {
-      const cleanEmail = formData.email.toLowerCase().trim();
-      
       const res = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, email: cleanEmail })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
       });
-
       const data = await res.json();
       if (res.ok) {
-        // ⭐ Token aur User Details save karein
         localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify({
-            username: data.user.username,
-            email: data.user.email,
-            _id: data.user.id
-        }));
-        localStorage.setItem("lastEmail", cleanEmail);
-        
-        // ⭐ UPDATED REDIRECT: Seedha Dashboard ke bajaye Selection Page par bhejein
-        window.location.href = "/select-vehicle";
+        localStorage.setItem("user", JSON.stringify(data.user));
+        setIsAuth(true); // ⭐ Trigger reactive update
+        navigate("/dashboard");
       } else {
-        alert(data.error || "Invalid Credentials");
+        alert(data.error);
       }
-    } catch (error) {
-      alert("Server Error. Please check your connection.");
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { alert("Login failed"); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-white overflow-x-hidden">
-      
-      {/* Branding Side */}
-      <div className="md:w-1/2 bg-linear-to-br from-emerald-500 to-slate-900 relative overflow-hidden flex items-center justify-center p-8 md:p-16 order-1 md:order-2 min-h-[35vh] md:min-h-screen">
-        <div className="absolute inset-0 opacity-10 pointer-events-none flex items-center justify-center">
-            <FaGasPump size={400} className="text-white transform rotate-12 scale-150 md:scale-100" />
-        </div>
-        
-        <div className="relative z-10 text-white max-w-md text-center md:text-left">
-            <div className="hidden md:inline-block bg-white/20 p-3 rounded-2xl mb-6 backdrop-blur-md">
-                <FaGasPump size={32} className="text-white" />
-            </div>
-            <h1 className="text-3xl md:text-5xl font-black mb-4 tracking-tight leading-tight italic">
-                Fueling Your <br/> Financial Future.
-            </h1>
-            <p className="text-emerald-100 text-sm md:text-base mb-8 leading-relaxed font-medium italic">
-                Track every drop, manage multiple vehicles, and stay ahead of your expenses.
-            </p>
-            
-            <div className="hidden md:flex flex-col gap-3 text-sm font-bold text-emerald-50">
-                <div className="flex items-center gap-2"><FiCheckCircle className="text-emerald-300" /> Multi-Vehicle Support</div>
-                <div className="flex items-center gap-2"><FiCheckCircle className="text-emerald-300" /> Bike & Car Specific Analytics</div>
-                <div className="flex items-center gap-2"><FiCheckCircle className="text-emerald-300" /> Cloud Data Backup</div>
-            </div>
-        </div>
+    <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-[#0a0c10]' : 'bg-gray-50'} flex items-center justify-center p-4 transition-colors duration-500`}>
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-500/10 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[10%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[120px] rounded-full animate-pulse" />
       </div>
 
-      {/* Form Side */}
-      <div className="md:w-1/2 flex items-center justify-center p-6 sm:p-12 md:p-16 order-2 md:order-1">
-        <div className="w-full max-w-sm mx-auto">
-          <div className="md:hidden flex justify-center mb-6 text-emerald-500 font-black italic text-2xl">
-            FuelTracker<span className="text-slate-900">.pro</span>
+      <div className="w-full max-w-md relative z-10 animate-fade-in">
+        <div className="text-center mb-10">
+          <div className="w-20 h-20 bg-emerald-500 text-slate-900 rounded-[2.2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-emerald-500/30 rotate-12 hover:rotate-0 transition-transform duration-500">
+            <FiShield size={36} />
           </div>
-
-          <h2 className="text-3xl font-black text-slate-800 mb-2">Welcome Back!</h2>
-          <p className="text-slate-500 mb-8 text-sm font-medium italic">Login to manage your vehicles efficiently</p>
-          
-          <div className="space-y-5">
-            <div>
-                <label className="block text-slate-600 text-[10px] font-black uppercase mb-2 pl-1 tracking-widest italic">Email Address</label>
-                <div className="relative group">
-                    <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
-                    <input 
-                        type="email" 
-                        placeholder="name@example.com" 
-                        value={formData.email}
-                        className="w-full p-4 pl-12 bg-slate-50 border-2 border-transparent focus:border-emerald-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-700 shadow-sm"
-                        onChange={(e) => setFormData({...formData, email: e.target.value})} 
-                    />
-                </div>
-            </div>
-            
-            <div>
-                <label className="block text-slate-600 text-[10px] font-black uppercase mb-2 pl-1 tracking-widest italic">Password</label>
-                <div className="relative group">
-                    <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
-                    <input 
-                        type={showPassword ? "text" : "password"} 
-                        placeholder="••••••••" 
-                        className="w-full p-4 pl-12 pr-12 bg-slate-50 border-2 border-transparent focus:border-emerald-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-700 shadow-sm"
-                        onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                    />
-                    <button 
-                        type="button" 
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors focus:outline-none"
-                    >
-                        {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
-                    </button>
-                </div>
-            </div>
-            
-            <button 
-              onClick={handleLogin} 
-              disabled={loading}
-              className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-70 mt-4 uppercase text-[10px] italic"
-            >
-              {loading ? "Verifying Garage..." : "Access Your Garage"}
-            </button>
-          </div>
-
-          <p className="text-center mt-8 text-slate-500 text-sm font-medium italic">
-            Don't have an account? <Link to="/register" className="text-emerald-600 font-black hover:underline ml-1">Register now</Link>
-          </p>
+          <h1 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic mb-2">Login<span className="text-emerald-500">.</span></h1>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] italic">Access Operations Hub</p>
         </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="glass-card p-1.5 rounded-[2rem] border border-white/10 shadow-2xl">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-4 p-4 bg-slate-100/50 dark:bg-white/5 rounded-3xl border border-transparent focus-within:border-emerald-500/30 transition-all group">
+                <div className="p-3 bg-white dark:bg-neutral-900 rounded-2xl text-slate-400 group-focus-within:text-emerald-500 group-focus-within:shadow-lg transition-all">
+                  <FiMail size={20} />
+                </div>
+                <input
+                  required type="email"
+                  placeholder="Email Address"
+                  className="w-full bg-transparent outline-none dark:text-white font-bold italic tracking-wider text-sm py-2"
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center gap-4 p-4 bg-slate-100/50 dark:bg-white/5 rounded-3xl border border-transparent focus-within:border-emerald-500/30 transition-all group relative">
+                <div className="p-3 bg-white dark:bg-neutral-900 rounded-2xl text-slate-400 group-focus-within:text-emerald-500 group-focus-within:shadow-lg transition-all">
+                  <FiLock size={20} />
+                </div>
+                <input
+                  required type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  className="w-full bg-transparent outline-none dark:text-white font-bold italic tracking-wider text-sm py-2"
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="p-2 text-slate-400 hover:text-emerald-500 transition-colors outline-none"
+                >
+                  {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            disabled={loading}
+            className="w-full py-7 bg-emerald-500 text-slate-900 rounded-[2.2rem] font-black italic uppercase tracking-[0.2em] shadow-2xl shadow-emerald-500/20 active:scale-[0.98] hover:scale-[1.01] transition-all flex items-center justify-center gap-4 group"
+          >
+            {loading ? <div className="w-6 h-6 border-4 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" /> : (
+              <>
+                Login <FiArrowRight size={22} className="group-hover:translate-x-2 transition-transform" />
+              </>
+            )}
+          </button>
+
+          <div className="text-center pt-6">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] italic">
+              New here? <Link to="/register" className="text-emerald-500 hover:text-emerald-400 transition-colors underline decoration-emerald-500/30 underline-offset-4">Create an account</Link>
+            </p>
+          </div>
+        </form>
       </div>
     </div>
   );

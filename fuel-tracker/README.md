@@ -1,16 +1,64 @@
-# React + Vite
+# FuelTracker - Your Personal Fuel Efficiency Partner
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+FuelTracker is a modern, premium web application designed to help drivers manage their vehicles, track fuel consumption, and monitor maintenance schedules with ease. Built with a sleek glassmorphism UI and a mobile-first approach.
 
-Currently, two official plugins are available:
+## 🚀 Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 📊 Smart Dashboard
+- **Real-time Stats**: Track your total spend, average fuel consumption, and mileage at a glance.
+- **Maintenance Alerts**: Visual indicators let you know when your vehicle is due for maintenance.
+- **Recent Activity**: Quickly view your last few fuel entries.
 
-## React Compiler
+### 🚗 Vehicle Management
+- **Multi-Vehicle Support**: Track cars, bikes, and custom units in one single account.
+- **Garage View**: Switch between your vehicles effortlessly with the unique "My Garage" interface.
+- **Maintenance Settings**: Set custom maintenance intervals (KM) for each vehicle.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### ⛽ Fuel Tracking
+- **Easy Logging**: Add fuel logs quickly with data for Odometer, Price, Liters, and Station.
+- **Photo Logs**: Option to attach receipts or odometer photos (if configured).
+- **History Logs**: A beautiful history view where you can search, edit, or delete past entries.
 
-## Expanding the ESLint configuration
+### 📈 Analytics & Tools
+- **Fuel Charts**: Visual representation of your fuel trends and efficiency over time.
+- **Trip Estimator**: Calculate how much fuel and money you'll need for your next long trip.
+- **Map Viewer**: Find nearby fuel stations and points of interest using integrated Leaflet maps.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 🎨 Premium User Experience
+- **Dark & Light Mode**: Seamlessly switch between a sleek dark theme and a clean light theme.
+- **Glassmorphism Design**: Modern, frosted-glass UI elements that look premium on any device.
+- **Mobile Optimized**: Custom bottom navigation and headers designed for easy one-handed use on mobile.
+
+### 🛠 Support & Security
+- **Secure Registration**: JWT-based authentication to keep your car's telemetry data private.
+- **Support System**: Direct contact form integrated with EmailJS for quick help.
+
+## 💻 Tech Stack
+
+- **Frontend**: React 19, Vite, Tailwind CSS 4
+- **Routing**: React Router 7
+- **Icons**: React Icons (Feather, FontAwesome)
+- **Charts**: Recharts
+- **Maps**: Leaflet & React Leaflet
+- **Backend**: Node.js, Express, MongoDB (separate repository)
+- **Communications**: EmailJS
+
+## 🛠 Getting Started
+
+1. **Clone the repository**:
+   ```bash
+   git clone [repository-url]
+   ```
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+3. **Configure API**:
+   Update `src/config.js` with your backend server URL.
+4. **Run Dev Server**:
+   ```bash
+   npm run dev
+   ```
+
+---
+*Created with ❤️ for drivers who care about efficiency.*

@@ -1,141 +1,117 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-// Icons
-import { FaGasPump } from "react-icons/fa";
-import { FiEye, FiEyeOff, FiCheckCircle } from "react-icons/fi";
-// ⭐ SMART IMPORT: Central file se URL utha raha hai
-import { API_URL } from "../config"; 
+import React, { useState, useContext } from "react";
+import { FiUser, FiMail, FiLock, FiArrowRight, FiShield, FiEye, FiEyeOff } from "react-icons/fi";
+import { useNavigate, Link } from "react-router-dom";
+import { API_URL } from "../config";
+import { ThemeContext } from "../context/Themecontext";
 
 const Register = () => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({ username: "", email: "", password: "" });
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false); 
+  const { theme } = useContext(ThemeContext);
+  const navigate = useNavigate();
 
-  const handleRegister = async () => {
-    if(!formData.username || !formData.email || !formData.password) {
-        alert("Please fill all fields");
-        return;
-    }
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
     try {
-      // ⭐ UPDATED: Ab ye variable manual change karne ki zaroorat nahi
       const res = await fetch(`${API_URL}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
       });
-
       const data = await res.json();
       if (res.ok) {
-        alert("Registration Successful! Please Login.");
         navigate("/login");
       } else {
-        alert(data.error || "Registration failed");
+        alert(data.error);
       }
-    } catch (error) {
-      alert("Server connection failed. Please try later.");
-    } finally {
-        setLoading(false);
-    }
+    } catch (err) { alert("Registration failed"); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-white overflow-x-hidden">
-      
-      {/* --- RIGHT SIDE: Branding --- */}
-      <div className="md:w-1/2 bg-linear-to-br from-emerald-500 to-slate-900 relative overflow-hidden flex items-center justify-center p-8 md:p-16 order-1 md:order-2 min-h-[35vh] md:min-h-screen animate-fade-in">
-        <div className="absolute inset-0 opacity-10 pointer-events-none flex items-center justify-center">
-            <FaGasPump size={400} className="text-white transform -rotate-12 scale-150 md:scale-100" />
-        </div>
-        
-        <div className="relative z-10 text-white flex flex-col items-start max-w-md animate-slide-up">
-            <div className="bg-white/20 p-3 rounded-2xl mb-6 backdrop-blur-md">
-                <FaGasPump size={32} className="text-white" />
-            </div>
-            <h1 className="text-3xl md:text-5xl font-black mb-4 tracking-tight leading-tight">
-                Start Your <br/> Fuel Journey.
-            </h1>
-            <p className="text-emerald-100 text-sm md:text-base mb-8 leading-relaxed font-medium">
-                Join thousands of smart drivers tracking expenses, optimizing routes, and saving money every mile.
-            </p>
-            
-            <div className="hidden md:flex flex-col gap-3 text-sm font-bold text-emerald-50">
-                <div className="flex items-center gap-2"><FiCheckCircle className="text-emerald-300" /> Smart Analytics Dashboard</div>
-                <div className="flex items-center gap-2"><FiCheckCircle className="text-emerald-300" /> Secure Cloud Sync</div>
-                <div className="flex items-center gap-2"><FiCheckCircle className="text-emerald-300" /> Export Reports Anytime</div>
-            </div>
-        </div>
+    <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-[#0a0c10]' : 'bg-gray-50'} flex items-center justify-center p-4 transition-colors duration-500`}>
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-500/10 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[10%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[120px] rounded-full animate-pulse" />
       </div>
 
-      {/* --- LEFT SIDE: Form --- */}
-      <div className="md:w-1/2 flex items-center justify-center p-6 sm:p-12 md:p-16 order-2 md:order-1 animate-fade-in">
-        <div className="w-full max-w-sm mx-auto">
-          
-          <div className="md:hidden flex justify-center mb-6 text-emerald-500">
-            <FaGasPump size={40} />
+      <div className="w-full max-w-md relative z-10 animate-fade-in">
+        <div className="text-center mb-10">
+          <div className="w-20 h-20 bg-emerald-500 text-slate-900 rounded-[2.2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-emerald-500/30 -rotate-12 hover:rotate-0 transition-transform duration-500">
+            <FiShield size={36} />
           </div>
-
-          <h2 className="text-3xl font-black text-slate-800 mb-2">Create Account</h2>
-          <p className="text-slate-500 mb-8 text-sm font-medium">Sign up to get started with FuelTracker</p>
-          
-          <div className="space-y-5">
-            {/* Username Field */}
-            <div>
-                <label className="block text-slate-600 text-xs font-black uppercase mb-2 pl-1 tracking-widest">Username</label>
-                <input 
-                type="text" 
-                placeholder="e.g., AliKhan123" 
-                className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-emerald-500 focus:bg-white rounded-xl outline-none transition-all font-bold text-slate-700 shadow-sm"
-                onChange={(e) => setFormData({...formData, username: e.target.value})} 
-                />
-            </div>
-            
-            {/* Email Field */}
-            <div>
-                <label className="block text-slate-600 text-xs font-black uppercase mb-2 pl-1 tracking-widest">Email Address</label>
-                <input 
-                type="email" 
-                placeholder="name@example.com" 
-                className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-emerald-500 focus:bg-white rounded-xl outline-none transition-all font-bold text-slate-700 shadow-sm"
-                onChange={(e) => setFormData({...formData, email: e.target.value})} 
-                />
-            </div>
-            
-            {/* Password Field */}
-            <div>
-                <label className="block text-slate-600 text-xs font-black uppercase mb-2 pl-1 tracking-widest">Password</label>
-                <div className="relative group">
-                <input 
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="••••••••" 
-                    className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-emerald-500 focus:bg-white rounded-xl pr-12 outline-none transition-all font-bold text-slate-700 shadow-sm"
-                    onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                />
-                <button 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors p-1 focus:outline-none"
-                >
-                    {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
-                </button>
-                </div>
-            </div>
-            
-            <button 
-              onClick={handleRegister}
-              disabled={loading}
-              className="w-full bg-emerald-500 text-white py-4 rounded-xl font-black tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-70 mt-4 uppercase text-xs"
-            >
-              {loading ? "Creating Account..." : "Create Account"}
-            </button>
-          </div>
-
-          <p className="text-center mt-8 text-slate-500 text-sm font-medium">
-            Already have an account? <Link to="/login" className="text-emerald-600 font-black hover:underline ml-1">Login here</Link>
-          </p>
+          <h1 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic mb-2">Register<span className="text-emerald-500">.</span></h1>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] italic">Create Your Account</p>
         </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="glass-card p-1.5 rounded-[2rem] border border-white/10 shadow-2xl">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-4 p-4 bg-slate-100/50 dark:bg-white/5 rounded-3xl border border-transparent focus-within:border-emerald-500/30 transition-all group">
+                <div className="p-3 bg-white dark:bg-neutral-900 rounded-2xl text-slate-400 group-focus-within:text-emerald-500 group-focus-within:shadow-lg transition-all">
+                  <FiUser size={20} />
+                </div>
+                <input
+                  required type="text"
+                  placeholder="Full Name"
+                  className="w-full bg-transparent outline-none dark:text-white font-bold italic tracking-wider text-sm py-2"
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center gap-4 p-4 bg-slate-100/50 dark:bg-white/5 rounded-3xl border border-transparent focus-within:border-emerald-500/30 transition-all group">
+                <div className="p-3 bg-white dark:bg-neutral-900 rounded-2xl text-slate-400 group-focus-within:text-emerald-500 group-focus-within:shadow-lg transition-all">
+                  <FiMail size={20} />
+                </div>
+                <input
+                  required type="email"
+                  placeholder="Email Address"
+                  className="w-full bg-transparent outline-none dark:text-white font-bold italic tracking-wider text-sm py-2"
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center gap-4 p-4 bg-slate-100/50 dark:bg-white/5 rounded-3xl border border-transparent focus-within:border-emerald-500/30 transition-all group relative">
+                <div className="p-3 bg-white dark:bg-neutral-900 rounded-2xl text-slate-400 group-focus-within:text-emerald-500 group-focus-within:shadow-lg transition-all">
+                  <FiLock size={20} />
+                </div>
+                <input
+                  required type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  className="w-full bg-transparent outline-none dark:text-white font-bold italic tracking-wider text-sm py-2"
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="p-2 text-slate-400 hover:text-emerald-500 transition-colors outline-none"
+                >
+                  {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            disabled={loading}
+            className="w-full py-7 bg-emerald-500 text-slate-900 rounded-[2.2rem] font-black italic uppercase tracking-[0.2em] shadow-2xl shadow-emerald-500/20 active:scale-[0.98] hover:scale-[1.01] transition-all flex items-center justify-center gap-4 group"
+          >
+            {loading ? <div className="w-6 h-6 border-4 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" /> : (
+              <>
+                Sign Up <FiArrowRight size={22} className="group-hover:translate-x-2 transition-transform" />
+              </>
+            )}
+          </button>
+
+          <div className="text-center pt-6">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] italic">
+              Already registered? <Link to="/login" className="text-emerald-500 hover:text-emerald-400 transition-colors underline decoration-emerald-500/30 underline-offset-4">Login here</Link>
+            </p>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { 
-    FiAlertTriangle, FiDroplet, FiZap, FiActivity, 
-    FiPlus, FiChevronDown, FiShield, FiTrendingUp, FiCheckCircle
+import {
+    FiAlertTriangle, FiDroplet, FiZap, FiActivity,
+    FiPlus, FiChevronDown, FiShield, FiTrendingUp, FiCheckCircle, FiSettings, FiNavigation
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
-import { API_URL } from "../config"; 
+import { API_URL } from "../config";
+import { VehicleContext } from "../context/VehicleContext";
+import FuelCharts from "./FuelCharts";
 
 const styles = {
-    card: "bg-white/80 dark:bg-[#12141c]/80 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-2xl rounded-[2.5rem] transition-all duration-500",
-    bigNumber: "text-8xl sm:text-[10rem] font-black italic tracking-tighter leading-none text-slate-900 dark:text-white drop-shadow-2xl",
-    input: "w-full bg-slate-100 dark:bg-neutral-800/80 p-5 rounded-3xl font-black text-3xl text-emerald-500 outline-none border-2 border-transparent focus:border-emerald-500/30 transition-all italic text-center",
+    card: "glass-card p-10 hover:shadow-emerald-500/10 hover:border-emerald-500/50 transition-all duration-500 group flex flex-col justify-between h-full",
+    statLabel: "text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 mb-3 block italic",
+    statValue: "text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic",
+    iconContainer: "w-16 h-16 rounded-[2rem] flex items-center justify-center bg-emerald-500/10 text-emerald-500 group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-500 shadow-lg shadow-emerald-500/5"
 };
 
 const Dashboard = () => {
@@ -17,248 +20,390 @@ const Dashboard = () => {
     const [selectedVehicleId, setSelectedVehicleId] = useState(localStorage.getItem("activeVehicleId") || "");
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showAlert, setShowAlert] = useState(false);
+    const [stats, setStats] = useState({ totalSpend: 0, totalLiters: 0, avgEconomy: 0 });
+    const [maintenance, setMaintenance] = useState({ percentage: 0, status: 'Good', remaining: 0, limit: 0, currentOdo: 0 });
     const [manualOdoInput, setManualOdoInput] = useState("");
-    const [oilStatus, setOilStatus] = useState({ percent: 0, remaining: 0, target: 0, critical: false });
-    const [currentOdometer, setCurrentOdometer] = useState(0);
-    const navigate = useNavigate();
 
-    const userData = JSON.parse(localStorage.getItem("user"));
-    const registeredUsername = userData ? userData.username : "Pro User";
+    const navigate = useNavigate();
+    const { activeVehicle, setActiveVehicle } = React.useContext(VehicleContext);
+
     const fetchData = async () => {
         const token = localStorage.getItem("token");
         if (!token) { navigate("/login"); return; }
         try {
             const vRes = await fetch(`${API_URL}/vehicles`, { headers: { 'Authorization': token } });
-            const vData = await vRes.json();
-            setVehicles(vData);
 
-            const activeId = selectedVehicleId || vData[0]?._id;
+            if (vRes.status === 401 || vRes.status === 403) {
+                localStorage.clear();
+                navigate("/login");
+                return;
+            }
+
+            const vData = await vRes.json();
+            const vehiclesList = Array.isArray(vData) ? vData : [];
+            setVehicles(vehiclesList);
+
+            const activeId = selectedVehicleId || vehiclesList[0]?._id;
             if (activeId) {
                 setSelectedVehicleId(activeId);
                 localStorage.setItem("activeVehicleId", activeId);
+                const currentVehicle = vehiclesList.find(v => v._id === activeId);
+                setActiveVehicle(currentVehicle);
 
                 const hRes = await fetch(`${API_URL}/history?vehicleId=${activeId}`, { headers: { 'Authorization': token } });
                 const hData = await hRes.json();
-                const sortedHistory = (Array.isArray(hData) ? hData : (hData.data || [])).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                const historyList = Array.isArray(hData) ? hData : (hData.data && Array.isArray(hData.data) ? hData.data : []);
+                const sortedHistory = historyList.sort((a, b) => new Date(b.date) - new Date(a.date));
                 setEntries(sortedHistory);
 
-                const currentVehicle = vData.find(v => v._id === activeId);
-                calculateOilSystem(sortedHistory, currentVehicle);
+                if (currentVehicle) {
+                    calculateMaintenanceStatus(sortedHistory, currentVehicle);
+                }
             }
-        } catch (err) { console.error("System Error:", err); } 
-        finally { setLoading(false); }
+        } catch (err) {
+            console.error("System Error:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => { fetchData(); }, [selectedVehicleId]);
 
-    // Dashboard.jsx mein is function ko update karein
-const calculateOilSystem = (history, vehicle) => {
-    if (!vehicle) return;
-    
-    // 1. Current Reading: Latest Fuel Entry ya Manual Sync
-    const latestEntryOdo = history.length > 0 ? parseFloat(history[0].odometer || 0) : 0;
-    const savedOdo = localStorage.getItem(`odo_${vehicle._id}`);
-    const currentOdo = Math.max(parseFloat(savedOdo || 0), latestEntryOdo);
-    setCurrentOdometer(currentOdo);
+    const calculateMaintenanceStatus = (history, vehicle) => {
+        if (!vehicle) return;
 
-    // 2. Dynamic Vehicle Stats
-    // Agar Car hai tou 5000, Bike hai tou 1000, warna jo user ne set kiya wo.
-    const INTERVAL = vehicle.maintenanceInterval || (vehicle.type === 'Car' ? 5000 : 1000); 
-    
-    const userData = JSON.parse(localStorage.getItem("user"));
-    const registeredUsername = userData ? userData.username : "Pro User";
-    // ⭐ NO HARDCODING: Database se pichli service ki reading uthao.
-    // Agar nayi gaari hai jiski service nahi hui, tou baseline 0 hogi.
-    const lastService = vehicle.oilLastOdo || 0; 
-    
-    // 3. Dynamic Target: Har gaari ka apna agla milestone
-    const targetOdo = lastService + INTERVAL; 
-    
-    // 4. Calculations
-    const remaining = targetOdo - currentOdo;
-    const drivenInCycle = currentOdo - lastService;
-    
-    // Percentage use: (Driven / Interval) * 100
-    const percent = Math.min((drivenInCycle / INTERVAL) * 100, 100);
+        const latestEntryOdo = history.length > 0 ? parseFloat(history[0].odometer || 0) : 0;
+        const savedOdo = localStorage.getItem(`odo_${vehicle._id}`);
+        const currentOdo = Math.max(parseFloat(savedOdo || 0), latestEntryOdo);
 
-    setOilStatus({
-        remaining: remaining > 0 ? remaining : 0,
-        percent: percent,
-        target: targetOdo,
-        // Critical alert: 10% interval baqi rehne par warning
-        critical: remaining <= (INTERVAL * 0.1) 
-    });
-    
-    setShowAlert(remaining <= 0);
-};
+        const INTERVAL = vehicle.maintenanceInterval || (vehicle.type === 'Bike' ? 1000 : 5000);
+        const lastService = vehicle.oilLastOdo || 0;
+
+        const targetOdo = lastService + INTERVAL;
+        const remaining = targetOdo - currentOdo;
+        const drivenInCycle = currentOdo - lastService;
+
+        const percentage = Math.min((drivenInCycle / INTERVAL) * 100, 100);
+        const status = remaining <= 0 ? 'Overdue' : (remaining <= (INTERVAL * 0.1) ? 'Critical' : 'Good');
+
+        const totalSpent = history.reduce((acc, item) => acc + (parseFloat(item.cost) || 0), 0);
+        const totalLiters = history.reduce((acc, item) => acc + (parseFloat(item.liters) || 0), 0);
+        const readings = history.map(e => parseFloat(e.odometer)).filter(v => v > 0);
+        const avgEconomy = (totalLiters > 0 && readings.length > 1)
+            ? ((Math.max(...readings) - Math.min(...readings)) / totalLiters).toFixed(2) : "0.00";
+
+        setStats({ totalSpend: totalSpent, totalLiters: totalLiters.toFixed(1), avgEconomy: avgEconomy });
+        setMaintenance({
+            percentage: Math.round(percentage),
+            status: status,
+            remaining: remaining > 0 ? remaining : 0,
+            limit: targetOdo,
+            currentOdo: currentOdo
+        });
+    };
+
+    const handleResetMaintenance = async () => {
+        const token = localStorage.getItem("token");
+        const currentVehicle = vehicles.find(v => v._id === selectedVehicleId);
+        const interval = currentVehicle?.maintenanceInterval || (currentVehicle?.type === 'Bike' ? 1000 : 5000);
+        const nextTarget = Math.floor(maintenance.currentOdo + interval);
+
+        if (window.confirm(`Did you change oil at ${maintenance.currentOdo} KM? Next target will be ${nextTarget} KM`)) {
+            try {
+                await fetch(`${API_URL}/maintenance/reset`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                    body: JSON.stringify({ vehicleId: selectedVehicleId, currentOdo: maintenance.currentOdo })
+                });
+                localStorage.setItem(`odo_${selectedVehicleId}`, maintenance.currentOdo);
+                fetchData();
+            } catch (error) { console.error("Reset Failed"); }
+        }
+    };
 
     const handleSync = () => {
         if (!manualOdoInput) return;
         localStorage.setItem(`odo_${selectedVehicleId}`, manualOdoInput);
         setManualOdoInput("");
-        fetchData(); 
+        fetchData();
     };
 
-    const handleOilReset = async () => {
-    const token = localStorage.getItem("token");
-    
-    // ⭐ Gaari ke apne interval ke mutabiq next target calculate karein
-    const currentVehicle = vehicles.find(v => v._id === selectedVehicleId);
-    const interval = currentVehicle?.maintenanceInterval || (currentVehicle?.type === 'Car' ? 5000 : 1000);
-    const nextTarget = Math.floor(currentOdometer + interval);
-
-    if(window.confirm(`Did you change oil at ${currentOdometer} KM? Next target will be ${nextTarget} KM`)) {
-        try {
-            await fetch(`${API_URL}/maintenance/reset`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': token },
-                body: JSON.stringify({ vehicleId: selectedVehicleId, currentOdo: currentOdometer })
-            });
-            localStorage.setItem(`odo_${selectedVehicleId}`, currentOdometer);
-            fetchData();
-        } catch (error) { console.error("Reset Failed"); }
-    }
-};
-
-    const stats = useMemo(() => {
-        const totalSpent = entries.reduce((acc, item) => acc + (parseFloat(item.cost) || 0), 0);
-        const totalLiters = entries.reduce((acc, item) => acc + (parseFloat(item.liters) || 0), 0);
-        const readings = entries.map(e => parseFloat(e.odometer)).filter(v => v > 0);
-        const fuelAvg = (totalLiters > 0 && readings.length > 1) 
-            ? ((Math.max(...readings) - Math.min(...readings)) / totalLiters).toFixed(2) : "0.00";
-        return { totalSpent, totalLiters, fuelAvg };
-    }, [entries]);
-
-    // --- 1. SKELETON COMPONENT (Khali boxes jo blink karenge) ---
-    const SkeletonLoader = () => (
-        <div className="animate-pulse space-y-6">
-            {/* Top Bar Skeleton */}
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-200 dark:bg-white/10 rounded-2xl"></div>
-                    <div className="space-y-2">
-                        <div className="h-2 w-20 bg-slate-200 dark:bg-white/10 rounded"></div>
-                        <div className="h-6 w-32 bg-slate-200 dark:bg-white/10 rounded"></div>
-                    </div>
-                </div>
-                <div className="w-24 h-10 bg-slate-200 dark:bg-white/10 rounded-xl"></div>
-            </div>
-
-            {/* Hero Section Skeleton */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-8 h-80 bg-white/50 dark:bg-white/5 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 flex items-center justify-between">
-                    <div className="space-y-4">
-                        <div className="h-4 w-32 bg-slate-200 dark:bg-white/10 rounded"></div>
-                        <div className="h-24 w-48 bg-slate-200 dark:bg-white/10 rounded-3xl"></div>
-                        <div className="h-10 w-40 bg-slate-200 dark:bg-white/10 rounded-2xl"></div>
-                    </div>
-                    <div className="w-48 h-48 rounded-full border-8 border-slate-200 dark:border-white/10"></div>
-                </div>
-
-                {/* Right Side Stats Skeleton */}
-                <div className="lg:col-span-4 flex flex-col gap-6">
-                    <div className="flex-1 bg-white/50 dark:bg-white/5 rounded-[2.5rem] p-8 space-y-4">
-                        <div className="h-4 w-24 bg-slate-200 dark:bg-white/10 rounded"></div>
-                        <div className="h-12 w-full bg-slate-200 dark:bg-white/10 rounded-2xl"></div>
-                        <div className="h-12 w-full bg-slate-200 dark:bg-white/10 rounded-2xl"></div>
-                    </div>
-                    <div className="h-32 bg-emerald-500/20 rounded-[2.5rem]"></div>
-                </div>
-            </div>
-
-            {/* Bottom Bento Stats Skeleton */}
-            <div className="grid grid-cols-2 gap-6 mt-6">
-                <div className="h-32 bg-white/50 dark:bg-white/5 rounded-[2.5rem]"></div>
-                <div className="h-32 bg-white/50 dark:bg-white/5 rounded-[2.5rem]"></div>
-            </div>
+    if (loading) return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0a0c10]">
+            <div className="w-20 h-20 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-8" />
+            <h2 className="text-xl font-black italic text-emerald-500 animate-pulse tracking-widest uppercase">Initializing Radar...</h2>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#0B0E14] transition-colors duration-500 p-4 md:p-6 max-w-300 mx-auto font-bold overflow-hidden flex flex-col justify-center">
-            
-            {/* COMPACT TOP BAR */}
-            <div className="flex justify-between items-center mb-6">    
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/30"><FiShield size={20} /></div>
-                    <div>
-                        <p className="text-[10px] text-emerald-500 tracking-[0.2em] font-black mb-0.5 opacity-80">
-                            Welcome, {registeredUsername}
+        <div className="relative pb-36 max-w-7xl mx-auto px-4 animate-fade-in">
+            {/* --- PREMIUM HERO SECTION --- */}
+            <header className="mb-12 pt-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10">
+                <div className="relative">
+                    <div className="absolute -left-10 -top-10 w-40 h-40 bg-emerald-500/20 blur-[100px] rounded-full pointer-events-none" />
+                    <h1 className="text-6xl md:text-8xl font-black text-slate-900 dark:text-white tracking-tighter italic leading-[0.8] mb-4">
+                        Dash<span className="text-emerald-500">Board</span>.
+                    </h1>
+                    <div className="flex items-center gap-4">
+                        <p className="text-slate-400 text-xs font-black uppercase tracking-[0.4em] italic bg-emerald-500/5 px-4 py-2 rounded-full border border-emerald-500/10 flex items-center gap-3">
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" /> System Active: {activeVehicle?.name || 'Vitals'}
                         </p>
-                        <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Log<span className="text-emerald-500">.pro</span></h1>
-                        <select value={selectedVehicleId} onChange={(e) => setSelectedVehicleId(e.target.value)} className="bg-transparent text-[9px] uppercase font-black tracking-widest text-slate-400 outline-none cursor-pointer">
-                            {vehicles.map(v => <option key={v._id} value={v._id} className="dark:bg-[#0B0E14]">{v.name}</option>)}
-                        </select>
                     </div>
                 </div>
-                <div className="text-right">
-                    <p className="text-[9px] text-slate-400 uppercase tracking-widest">Next Milestone</p>
-                    <p className="text-emerald-500 text-xl font-black italic">{oilStatus.target} KM</p>
+
+                <div className="w-full lg:w-auto flex flex-col sm:flex-row gap-4 items-center bg-slate-100 dark:bg-neutral-900/50 p-2 rounded-[2.5rem] border dark:border-white/5 backdrop-blur-md">
+                    <div className="flex -space-x-2 px-4 py-2 border-r dark:border-white/5">
+                        {vehicles.slice(0, 3).map((v, i) => (
+                            <div key={v._id} title={v.name} className="w-10 h-10 rounded-full border-4 border-white dark:border-neutral-900 bg-emerald-500 flex items-center justify-center text-white text-[10px] font-black shadow-lg">
+                                <FiActivity size={14} />
+                            </div>
+                        ))}
+                    </div>
+                    <select
+                        value={selectedVehicleId}
+                        onChange={(e) => setSelectedVehicleId(e.target.value)}
+                        className="bg-transparent outline-none font-black italic text-slate-900 dark:text-white px-6 py-2 cursor-pointer appearance-none text-sm tracking-widest uppercase"
+                    >
+                        {vehicles.map(v => <option key={v._id} value={v._id} className="dark:bg-[#12141c]">{v.name}</option>)}
+                    </select>
+                    <button onClick={() => navigate("/select-vehicle")} className="p-4 bg-emerald-500 text-white rounded-[1.8rem] shadow-xl shadow-emerald-500/20 active:scale-95 transition-all"><FiPlus size={20} /></button>
+                </div>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                {/* --- ANALYTICS HUB --- */}
+                <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className={styles.card}>
+                        <div className="flex justify-between items-start">
+                            <div className={styles.iconContainer}><FiActivity size={28} /></div>
+                            <div className="text-right">
+                                <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full uppercase italic tracking-tighter">Gross Spend</span>
+                            </div>
+                        </div>
+                        <div className="mt-10">
+                            <span className={styles.statLabel}>Consolidated Expenditure</span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-2xl font-black text-emerald-500 italic">Rs.</span>
+                                <h3 className={styles.statValue}>{stats.totalSpend.toLocaleString()}</h3>
+                            </div>
+                            <div className="mt-6 flex items-center gap-2 text-slate-400">
+                                <span className="w-full h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-emerald-500 w-[65%]" />
+                                </span>
+                                <span className="text-[9px] font-black">+12.5%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={styles.card}>
+                        <div className="flex justify-between items-start">
+                            <div className={styles.iconContainer}><FiDroplet size={28} /></div>
+                            <div className="text-right"><span className="text-[10px] font-black text-blue-500 bg-blue-500/10 px-3 py-1 rounded-full uppercase italic tracking-tighter">Total Volume</span></div>
+                        </div>
+                        <div className="mt-10">
+                            <span className={styles.statLabel}>Total Resource Consumption</span>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className={styles.statValue}>{stats.totalLiters}</h3>
+                                <span className="text-2xl font-black text-blue-500 italic">Liters</span>
+                            </div>
+                            <p className="text-[9px] font-black text-slate-400 mt-4 uppercase">Across {entries.length} refueling sessions</p>
+                        </div>
+                    </div>
+
+                    <div className="md:col-span-2 glass-card p-12 relative overflow-hidden group">
+                        <div className="absolute right-0 bottom-0 opacity-5 rotate-12 group-hover:rotate-0 transition-transform duration-1000"><FiTrendingUp size={200} /></div>
+                        <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-10">
+                            <div>
+                                <h4 className="text-5xl font-black text-slate-900 dark:text-white italic tracking-tighter mb-4">
+                                    {stats.avgEconomy} <span className="text-emerald-500 text-2xl tracking-normal">km/L</span>
+                                </h4>
+                                <span className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] italic">Current Resource Efficiency Index</span>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-500"><FiTrendingUp size={30} /></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="md:col-span-2 glass-card p-10 flex items-center justify-between gap-6 border-emerald-500/10 shadow-emerald-500/5">
+                        <div className="flex-1">
+                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-4 block italic flex items-center gap-2">
+                                <FiZap className="animate-pulse" /> Sync Odometer
+                            </span>
+                            <input
+                                type="number"
+                                value={manualOdoInput}
+                                onChange={(e) => setManualOdoInput(e.target.value)}
+                                placeholder={maintenance.currentOdo.toFixed(0)}
+                                className="w-full bg-slate-100 dark:bg-neutral-800/80 p-5 rounded-3xl font-black text-2xl text-emerald-500 outline-none border-2 border-transparent focus:border-emerald-500/30 transition-all italic"
+                            />
+                        </div>
+                        <button
+                            onClick={handleSync}
+                            className="bg-emerald-500 text-white p-7 rounded-[2rem] shadow-xl shadow-emerald-500/20 active:scale-95 transition-all hover:rotate-12"
+                        >
+                            <FiActivity size={28} />
+                        </button>
+                    </div>
+
+                    {/* --- PRO TOOLS --- */}
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div
+                            onClick={() => navigate("/trip-estimator")}
+                            className="glass-card p-8 group/tool hover:bg-emerald-500 transition-all duration-500 cursor-pointer border border-emerald-500/10"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="p-4 bg-emerald-500/10 text-emerald-500 group-hover/tool:bg-white group-hover/tool:text-emerald-500 rounded-2xl transition-all">
+                                    <FiNavigation size={24} />
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover/tool:text-emerald-100 block italic">Smart Tool</span>
+                                    <h4 className="text-xl font-black italic tracking-tighter dark:text-white group-hover/tool:text-white">Trip Estimator</h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            className="glass-card p-8 group/tool hover:bg-blue-500 transition-all duration-500 border border-blue-500/10"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="p-4 bg-blue-500/10 text-blue-500 group-hover/tool:bg-white group-hover/tool:text-blue-500 rounded-2xl transition-all">
+                                    <FiTrendingUp size={24} />
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover/tool:text-blue-100 block italic">Performance</span>
+                                    <h4 className="text-xl font-black italic tracking-tighter dark:text-white group-hover/tool:text-white">Leaderboard #1</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {/* --- DATA VISUALIZATION --- */}
+                    <div className="md:col-span-2 mt-4">
+                        <FuelCharts entries={entries} />
+                    </div>
+                </div>
+
+
+                {/* --- RIGHT SIDEBAR (Maintenance & Activity) --- */}
+                <div className="lg:col-span-4 space-y-10">
+                    {/* --- MAINTENANCE HUB --- */}
+                    <div className="bg-slate-900 dark:bg-neutral-950 rounded-[3.5rem] p-12 text-white shadow-3xl shadow-slate-900/20 relative overflow-hidden group">
+                        <div className="absolute -right-20 -top-20 w-60 h-60 bg-emerald-500/20 blur-[100px] rounded-full" />
+                        <div className="relative z-10 flex flex-col items-center">
+                            <div className="flex items-center gap-3 mb-10">
+                                <FiSettings className="text-emerald-500 animate-spin-slow" size={20} />
+                                <span className="text-[10px] font-black uppercase tracking-[0.4em] italic opacity-50">Maintenance Status</span>
+                            </div>
+
+                            {/* PREMIUM PROGRESS CIRCLE */}
+                            <div className="relative w-56 h-56 flex items-center justify-center mb-10">
+                                <svg className="w-full h-full transform -rotate-90">
+                                    <circle cx="112" cy="112" r="95" fill="transparent" stroke="currentColor" strokeWidth="14" className="text-neutral-800" />
+                                    <circle cx="112" cy="112" r="95" fill="transparent" stroke="#10b981" strokeWidth="14" strokeDasharray={2 * Math.PI * 95} strokeDashoffset={2 * Math.PI * 95 * (1 - maintenance.percentage / 100)} strokeLinecap="round" className="transition-all duration-1000 ease-out shadow-2xl" />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span className="text-5xl font-black italic tracking-tighter">{maintenance.percentage}%</span>
+                                    <span className="text-[9px] font-black opacity-30 uppercase tracking-widest mt-1">Life Used</span>
+                                </div>
+                            </div>
+
+                            <div className="text-center w-full bg-white/5 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/5 space-y-6">
+                                <div>
+                                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2 italic text-left">Oil Status: {maintenance.status}</p>
+                                    <h5 className="text-lg font-black italic tracking-tight text-left">Change oil in <span className="text-emerald-500">{maintenance.remaining.toFixed(0)}</span> km</h5>
+                                </div>
+
+                                {/* MULTI-MAINTENANCE MINI BARS */}
+                                <div className="space-y-4 pt-4 border-t border-white/10">
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest opacity-60 italic">
+                                            <span>Tire Health</span>
+                                            <span>{Math.max(0, 100 - Math.round((maintenance.currentOdo - (activeVehicle?.tireLastOdo || 0)) / (activeVehicle?.tireInterval || 40000) * 100))}%</span>
+                                        </div>
+                                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width: `${Math.max(0, 100 - ((maintenance.currentOdo - (activeVehicle?.tireLastOdo || 0)) / (activeVehicle?.tireInterval || 40000) * 100))}%` }} />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest opacity-60 italic">
+                                            <span>Air Filter</span>
+                                            <span>{Math.max(0, 100 - Math.round((maintenance.currentOdo - (activeVehicle?.filterLastOdo || 0)) / (activeVehicle?.filterInterval || 10000) * 100))}%</span>
+                                        </div>
+                                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-orange-500 transition-all duration-1000" style={{ width: `${Math.max(0, 100 - ((maintenance.currentOdo - (activeVehicle?.filterLastOdo || 0)) / (activeVehicle?.filterInterval || 10000) * 100))}%` }} />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest opacity-60 italic">
+                                            <span>Spark Plugs</span>
+                                            <span>{Math.max(0, 100 - Math.round((maintenance.currentOdo - (activeVehicle?.plugLastOdo || 0)) / (activeVehicle?.plugInterval || 20000) * 100))}%</span>
+                                        </div>
+                                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-purple-500 transition-all duration-1000" style={{ width: `${Math.max(0, 100 - ((maintenance.currentOdo - (activeVehicle?.plugLastOdo || 0)) / (activeVehicle?.plugInterval || 20000) * 100))}%` }} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleResetMaintenance}
+                                    className="w-full py-4 bg-emerald-500 text-slate-900 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-emerald-500/20"
+                                >
+                                    Quick Reset (Oil)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* --- RECENT ACTIVITY --- */}
+                    <div className="glass-card p-10">
+                        <div className="flex justify-between items-center mb-8">
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 block italic">Event Log</span>
+                                <h3 className="text-2xl font-black italic tracking-tighter dark:text-white mt-1">Recent <span className="text-emerald-500">Activity</span></h3>
+                            </div>
+                            <button onClick={() => navigate("/history")} className="text-emerald-500 text-[10px] font-black uppercase tracking-widest hover:underline">View All</button>
+                        </div>
+                        <div className="space-y-6">
+                            {entries.slice(0, 4).map((entry, idx) => (
+                                <div key={entry._id} className="flex items-center gap-4 group/item">
+                                    <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover/item:text-emerald-500 group-hover/item:bg-emerald-500/10 transition-colors">
+                                        <FiDroplet size={18} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center">
+                                            <p className="font-black italic text-sm dark:text-white">Rs. {entry.cost.toLocaleString()}</p>
+                                            <span className="text-[9px] font-bold text-slate-400">{new Date(entry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                                        </div>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{entry.liters}L @ {entry.odometer} km</p>
+                                    </div>
+                                </div>
+                            ))}
+                            {entries.length === 0 && (
+                                <p className="text-center text-slate-500 text-xs italic py-10 font-bold uppercase tracking-widest">No entries yet...</p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* HERO SECTION */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-                
-                {/* 1. COUNTDOWN CARD (Transition from 4200 to 5200) */}
-                <div className={`${styles.card} lg:col-span-8 p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group`}>
-                    <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><FiDroplet size={300} /></div>
-                    
-                    <div className="text-center md:text-left z-10">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase mb-4 tracking-widest">
-                            <FiActivity className="animate-pulse" /> Maintenance Status
-                        </div>
-                        <h2 className={styles.bigNumber}>{oilStatus.remaining.toFixed(0)}</h2>
-                        <p className="text-sm md:text-lg text-slate-400 uppercase italic tracking-[0.3em] mt-1">KM Left to {oilStatus.target}</p>
-                        <button onClick={handleOilReset} className="mt-8 bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-10 py-4 rounded-3xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-emerald-500 transition-all active:scale-95">Complete Service</button>
+            {/* QUICK ACTIONS */}
+            <div className="mt-12 group">
+                <button
+                    onClick={() => navigate("/add")}
+                    className="w-full py-10 bg-white/70 dark:bg-[#12141c]/70 backdrop-blur-xl shadow-2xl rounded-[3rem] border border-emerald-500/20 flex flex-col items-center justify-center gap-4 hover:bg-emerald-500 transition-all duration-500 group-hover:scale-[1.01]"
+                >
+                    <div className="w-20 h-20 bg-emerald-500 text-slate-900 rounded-[2rem] flex items-center justify-center group-hover:bg-white shadow-xl transition-all">
+                        <FiZap size={36} />
                     </div>
-
-                    <div className="relative w-52 h-52 sm:w-64 sm:h-64 shrink-0 shadow-emerald-500/20">
-                        <svg className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                            <circle cx="50%" cy="50%" r="40%" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-slate-100 dark:text-white/5" />
-                            <circle cx="50%" cy="50%" r="40%" fill="transparent" stroke="currentColor" strokeWidth="12" strokeDasharray="251" strokeDashoffset={251 - (251 * oilStatus.percent) / 100} 
-                                className={`${oilStatus.critical ? 'text-red-500' : 'text-emerald-500'} transition-all duration-1000 ease-out`} strokeLinecap="round" />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-5xl font-black dark:text-white italic">{oilStatus.percent.toFixed(0)}%</span>
-                            <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-1">Life Used</span>
-                        </div>
+                    <div>
+                        <span className="text-lg font-black italic group-hover:text-white dark:text-white tracking-widest uppercase">Push Refuel Log</span>
+                        <p className="text-[9px] font-black text-slate-400 group-hover:text-emerald-100 uppercase tracking-[0.5em] mt-2 italic">Initialize New Data point</p>
                     </div>
-                </div>
-
-                {/* 2. SYNC & EFFICIENCY */}
-                <div className="lg:col-span-4 flex flex-col gap-6">
-                    <div className={`${styles.card} p-8 flex-1 flex flex-col justify-center border-emerald-500/20 shadow-emerald-500/5`}>
-                        <h3 className="text-[10px] font-black dark:text-white uppercase italic mb-4 opacity-50 flex items-center gap-2"><FiActivity /> Sync Odometer</h3>
-                        <input type="number" value={manualOdoInput} onChange={(e) => setManualOdoInput(e.target.value)} placeholder={currentOdometer} className={styles.input} />
-                        <button onClick={handleSync} className="w-full mt-4 bg-emerald-500 py-4 rounded-3xl text-[10px] text-white font-black uppercase tracking-widest shadow-xl shadow-emerald-500/30 active:scale-95 transition-all">Update Meter</button>
-                    </div>
-
-                    <div className="bg-emerald-500 p-8 rounded-[2.5rem] text-white flex justify-between items-center group relative overflow-hidden shadow-2xl shadow-emerald-500/20">
-                        <FiTrendingUp className="absolute -right-4 -bottom-4 text-white/20 group-hover:scale-125 transition-transform duration-700" size={140} />
-                        <div className="z-10">
-                            <p className="text-[10px] font-black uppercase italic opacity-80 mb-1">Health Index</p>
-                            <h2 className="text-4xl md:text-5xl font-black italic">{stats.fuelAvg} <span className="text-xs opacity-60">KM/L</span></h2>
-                        </div>
-                        <FiCheckCircle size={32} className="opacity-40" />
-                    </div>
-                </div>
+                </button>
             </div>
-
-            {/* BENTO STATS - NO SCROLL GRID */}
-            <div className="grid grid-cols-2 gap-6 mt-6">
-                <div className={`${styles.card} p-6 flex flex-col justify-center`}>
-                    <p className="text-[10px] font-black text-slate-400 uppercase italic mb-1 tracking-widest">Total Spending</p>
-                    <h2 className="text-1xl md:text-4xl font-black text-slate-900 dark:text-white italic tracking-tighter">Rs. {stats.totalSpent.toLocaleString()}</h2>
-                </div>
-                <div className={`${styles.card} p-6 flex flex-col justify-center`}>
-                    <p className="text-[8px] font-black text-slate-400 uppercase italic mb-1 tracking-widest">Fuel Consumption</p>
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white italic tracking-tighter">{stats.totalLiters.toFixed(1)} <span className="text-sm opacity-50">L</span></h2>
-                </div>
-            </div>
-
-            
         </div>
     );
 };

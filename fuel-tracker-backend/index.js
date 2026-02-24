@@ -20,22 +20,22 @@ const JWT_SECRET = process.env.JWT_SECRET || "meraSecretKey123";
 // --- ⭐ MULTER CONFIGURATION (Image Storage) ---
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir); // Agar 'uploads' folder nahi hai to bana do
+  fs.mkdirSync(uploadDir); // Agar 'uploads' folder nahi hai to bana do
 }
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        // File ka naam unique banane ke liye timestamp add karna
-        cb(null, Date.now() + '-' + file.originalname);
-    }
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    // File ka naam unique banane ke liye timestamp add karna
+    cb(null, Date.now() + '-' + file.originalname);
+  }
 });
 
-const upload = multer({ 
-    storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 } // Limit: 5MB
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 } // Limit: 5MB
 });
 
 // --- CORS CONFIGURATION ---
@@ -71,14 +71,24 @@ mongoose.connect(process.env.MONGO_URI)
 // --- SECURITY MIDDLEWARE ---
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.startsWith('Bearer ')
+  console.log("Auth Header Received:", authHeader);
+
+  let token = authHeader && authHeader.startsWith('Bearer ')
     ? authHeader.split(' ')[1]
     : authHeader;
 
-  if (!token) return res.status(401).json({ error: "Access Denied. Login Required." });
+  if (token === "null" || token === "undefined") token = null;
+
+  if (!token) {
+    console.log("No token found in request.");
+    return res.status(401).json({ error: "Access Denied. Login Required." });
+  }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: "Invalid or Expired Token" });
+    if (err) {
+      console.log("JWT Verification Error:", err.message);
+      return res.status(403).json({ error: "Invalid or Expired Token" });
+    }
     req.user = user;
     next();
   });
@@ -92,58 +102,67 @@ app.get('/', (req, res) => {
 
 // 1. REGISTER & LOGIN (Pehle wala code same rahega...)
 app.post('/register', async (req, res) => {
-    try {
-        const { username, email, password } = req.body;
-        if (!email) return res.status(400).json({ error: "Email is missing" });
+  try {
+    const { username, email, password } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is missing" });
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ 
-            username, 
-            email: email.toLowerCase(), 
-            password: hashedPassword 
-        });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({
+      username,
+      email: email.toLowerCase(),
+      password: hashedPassword
+    });
 
-        await newUser.save();
-        res.status(201).json({ message: "User registered successfully!" });
-    } catch (error) {
-        console.error("REGISTER ERROR:", error);
-        res.status(500).json({ error: "Registration failed." });
-    }
+    await newUser.save();
+    res.status(201).json({ message: "User registered successfully!" });
+  } catch (error) {
+    console.error("REGISTER ERROR:", error);
+    res.status(500).json({ error: "Registration failed." });
+  }
 });
 
 app.post('/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email: email.toLowerCase() });
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase() });
 
-        if (!user) return res.status(400).json({ error: "User not found" });
+    if (!user) return res.status(400).json({ error: "User not found" });
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ error: "Invalid password" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ error: "Invalid password" });
 
-        const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' });
-        res.status(200).json({ 
-            token, 
-            user: { id: user._id, username: user.username, email: user.email } 
-        });
-    } catch (error) {
-        res.status(500).json({ error: "Login failed" });
-    }
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' });
+    res.status(200).json({
+      token,
+      user: { id: user._id, username: user.username, email: user.email }
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Login failed" });
+  }
 });
 
 // --- VEHICLE MANAGEMENT ---
 
 app.delete('/vehicles/:id', authenticateToken, async (req, res) => {
-    try {
-        const vehicleId = req.params.id;
-        const userId = req.user.id;
-        const deletedVehicle = await Vehicle.findOneAndDelete({ _id: vehicleId, userId: userId });
-        if (!deletedVehicle) return res.status(404).json({ error: "Vehicle not found" });
-        await FuelEntry.deleteMany({ vehicleId: vehicleId });
-        res.json({ message: "Vehicle and history deleted successfully!" });
-    } catch (error) {
-        res.status(500).json({ error: "Internal Server Error" });
+  try {
+    const vehicleId = req.params.id;
+    const userId = req.user.id;
+    const entries = await FuelEntry.find({ vehicleId: vehicleId, userId: userId });
+    for (const entry of entries) {
+      if (entry.receiptImage) {
+        const filePath = path.join(__dirname, entry.receiptImage);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
     }
+    await FuelEntry.deleteMany({ vehicleId: vehicleId, userId: userId });
+
+    const deletedVehicle = await Vehicle.findOneAndDelete({ _id: vehicleId, userId: userId });
+    res.json({ message: "Vehicle and history deleted successfully!" });
+  } catch (error) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 app.post('/vehicles/add', authenticateToken, async (req, res) => {
@@ -188,10 +207,10 @@ app.post('/add', authenticateToken, upload.single('receiptImage'), async (req, r
     if (!vehicle) return res.status(403).json({ error: "Unauthorized vehicle access" });
 
     // FormData se aane wala data hamesha string hota hai, isliye hum req.body use karenge
-    const newEntry = new FuelEntry({ 
-        ...req.body, 
-        userId: req.user.id,
-        receiptImage: req.file ? `/uploads/${req.file.filename}` : null // Image path save karein
+    const newEntry = new FuelEntry({
+      ...req.body,
+      userId: req.user.id,
+      receiptImage: req.file ? `/uploads/${req.file.filename}` : null // Image path save karein
     });
 
     await newEntry.save();
@@ -232,25 +251,122 @@ app.put('/maintenance/reset', authenticateToken, async (req, res) => {
 });
 
 app.put('/profile', authenticateToken, async (req, res) => {
-    try {
-        const { username, email, password } = req.body;
-        const updateData = { username, email: email.toLowerCase() };
+  try {
+    const { username, email, password } = req.body;
+    const updateData = { username, email: email.toLowerCase() };
 
-        if (password && password.trim() !== "") {
-            const hashedPassword = await bcrypt.hash(password, 10);
-            updateData.password = hashedPassword;
-        }
-
-        const updatedUser = await User.findByIdAndUpdate(
-            req.user.id, 
-            { $set: updateData }, 
-            { new: true }
-        ).select("-password");
-
-        res.status(200).json({ message: "Profile Updated!", user: updatedUser });
-    } catch (error) {
-        res.status(500).json({ error: "Update failed in database" });
+    if (password && password.trim() !== "") {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
     }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: updateData },
+      { new: true }
+    ).select("-password");
+
+    res.status(200).json({ message: "Profile Updated!", user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ error: "Update failed in database" });
+  }
+});
+
+app.delete('/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const entries = await FuelEntry.find({ userId: userId });
+    for (const entry of entries) {
+      if (entry.receiptImage) {
+        const filePath = path.join(__dirname, entry.receiptImage);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    }
+    await Vehicle.deleteMany({ userId: userId });
+    await FuelEntry.deleteMany({ userId: userId });
+    // Delete the user themselves
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({ message: "Account deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Account deletion failed" });
+  }
+});
+
+app.delete('/delete/:id', authenticateToken, async (req, res) => {
+  try {
+    const entryId = req.params.id;
+    const userId = req.user.id;
+    const entry = await FuelEntry.findOne({ _id: entryId, userId: userId });
+    if (!entry) return res.status(404).json({ error: "Entry not found" });
+
+    // File delete karein agar mojood hai
+    if (entry.receiptImage) {
+      const filePath = path.join(__dirname, entry.receiptImage);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    await FuelEntry.findByIdAndDelete(entryId);
+    res.json({ message: "Entry and image deleted successfully!" });
+  } catch (error) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.put('/update/:id', authenticateToken, upload.single('receiptImage'), async (req, res) => {
+  try {
+    const entryId = req.params.id;
+    const userId = req.user.id;
+    const { odometer, liters, pricePerLiter, cost, removeImage } = req.body;
+
+    const updateData = {
+      odometer,
+      liters,
+      pricePerLiter,
+      cost
+    };
+
+    const entry = await FuelEntry.findOne({ _id: entryId, userId: userId });
+    if (!entry) return res.status(404).json({ error: "Entry not found" });
+
+    if (req.file || removeImage === 'true') {
+      // Purani file delete karein
+      if (entry.receiptImage) {
+        const oldPath = path.join(__dirname, entry.receiptImage);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      if (req.file) {
+        updateData.receiptImage = `/uploads/${req.file.filename}`;
+      } else {
+        updateData.receiptImage = null;
+      }
+    }
+
+    const updatedEntry = await FuelEntry.findOneAndUpdate(
+      { _id: entryId, userId: userId },
+      { $set: updateData },
+      { new: true }
+    );
+
+    if (!updatedEntry) return res.status(404).json({ error: "Entry not found" });
+    res.status(200).json({ message: "Entry updated!", data: updatedEntry });
+  } catch (error) {
+    console.error("UPDATE ENTRY ERROR:", error);
+    res.status(500).json({ error: "Failed to update entry" });
+  }
+});
+
+// --- GLOBAL ERROR HANDLER ---
+app.use((err, req, res, next) => {
+  console.error("❌ GLOBAL ERROR CAUGHT:", err);
+  res.status(500).json({ error: "Something went wrong on the server!" });
 });
 
 // --- SERVER START ---

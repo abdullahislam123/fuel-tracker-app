@@ -2,12 +2,12 @@ const mongoose = require('mongoose');
 
 const FuelEntrySchema = new mongoose.Schema({
   // 1. Ab entries user ke bajaye vehicle se link honi chahiye
-  vehicleId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Vehicle', 
-    required: true 
+  vehicleId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vehicle',
+    required: true
   },
-  userId: { type: String, required: true }, 
+  userId: { type: String, required: true },
   date: { type: String, required: true },
   time: { type: String, required: true },
   liters: { type: Number, required: true },
@@ -15,6 +15,10 @@ const FuelEntrySchema = new mongoose.Schema({
   cost: { type: Number, required: true },
   odometer: { type: Number, required: true },
   receiptImage: { type: String, default: null },
+  // ⭐ Naya: Location Metadata for Map
+  latitude: { type: Number, default: null },
+  longitude: { type: Number, default: null },
+  stationName: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
