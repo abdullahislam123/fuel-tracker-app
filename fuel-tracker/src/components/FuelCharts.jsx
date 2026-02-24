@@ -70,15 +70,15 @@ const FuelCharts = ({ entries }) => {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 my-10">
             {/* PRICE TREND CHART */}
-            <div className="glass-card p-8 min-h-[400px] flex flex-col">
+            <div className="glass-card p-8 min-h-[400px] flex flex-col relative">
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 block italic">Market Index</span>
                         <h3 className="text-2xl font-black italic tracking-tighter dark:text-white mt-1">Price <span className="text-emerald-500">History</span></h3>
                     </div>
                 </div>
-                <div className="flex-1 w-full min-h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                <div className="flex-1 w-full min-w-0 relative">
+                    <ResponsiveContainer width="100%" aspect={2}>
                         <LineChart data={priceTrendData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.grid} />
                             <XAxis
@@ -109,15 +109,15 @@ const FuelCharts = ({ entries }) => {
             </div>
 
             {/* MONTHLY SPEND CHART */}
-            <div className="glass-card p-8 min-h-[400px] flex flex-col">
+            <div className="glass-card p-8 min-h-[400px] flex flex-col relative">
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 block italic">Financial Velocity</span>
                         <h3 className="text-2xl font-black italic tracking-tighter dark:text-white mt-1">Monthly <span className="text-blue-500">Burn</span></h3>
                     </div>
                 </div>
-                <div className="flex-1 w-full min-h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                <div className="flex-1 w-full min-w-0 relative">
+                    <ResponsiveContainer width="100%" aspect={2}>
                         <BarChart data={monthlySpendData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.grid} />
                             <XAxis

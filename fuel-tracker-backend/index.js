@@ -48,15 +48,16 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allows localhost and any Vercel deployment of this project
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith("vercel.app")) {
       callback(null, true);
     } else {
-      callback(new Error('CORS Policy Error: Origin not allowed'));
+      callback(null, false);
     }
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 }));
 
 app.use(express.json());
@@ -206,10 +207,15 @@ app.post('/add', authenticateToken, upload.single('receiptImage'), async (req, r
     const vehicle = await Vehicle.findOne({ _id: vehicleId, userId: req.user.id });
     if (!vehicle) return res.status(403).json({ error: "Unauthorized vehicle access" });
 
+    // ⭐ Fetch username dynamically since it's now required in the model
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
     // FormData se aane wala data hamesha string hota hai, isliye hum req.body use karenge
     const newEntry = new FuelEntry({
       ...req.body,
       userId: req.user.id,
+      username: user.username, // Set username from the user document
       receiptImage: req.file ? `/uploads/${req.file.filename}` : null // Image path save karein
     });
 
