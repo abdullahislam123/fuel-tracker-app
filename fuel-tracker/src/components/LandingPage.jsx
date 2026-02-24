@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaGasPump } from "react-icons/fa";
-import { FiArrowRight, FiActivity, FiZap, FiShield, FiMoon, FiSun, FiCpu, FiBarChart2 } from "react-icons/fi";
+import { FiArrowRight, FiActivity, FiZap, FiShield, FiMoon, FiSun, FiCpu, FiBarChart2, FiNavigation, FiMapPin } from "react-icons/fi";
 import { ThemeContext } from "../context/Themecontext";
 
 const LandingPage = () => {
