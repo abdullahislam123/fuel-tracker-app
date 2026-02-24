@@ -50,11 +50,11 @@ const allowedOrigins = [
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // Allow all Vercel subdomains and localhost
+  // Allow all Vercel subdomains and localhost (permissive check)
   const isAllowed = !origin ||
-    allowedOrigins.includes(origin) ||
-    origin.endsWith("vercel.app") ||
-    origin.includes("localhost");
+    origin.includes("vercel.app") ||
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1");
 
   if (isAllowed) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
@@ -62,7 +62,7 @@ app.use((req, res, next) => {
 
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization, Accept, Origin');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization, Accept, Origin, X-Api-Version');
 
   // Handle preflight (OPTIONS)
   if (req.method === 'OPTIONS') {
