@@ -41,8 +41,7 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
-// Handle ALL preflight requests immediately
-app.options('*', cors(corsOptions));
+// Enable CORS for all routes
 app.use(cors(corsOptions));
 
 // --- ⭐ MULTER CONFIGURATION (Image Storage) ---
