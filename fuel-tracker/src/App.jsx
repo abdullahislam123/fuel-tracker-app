@@ -45,7 +45,7 @@ const MobileHeader = () => {
 const Sidebar = () => {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const { activeVehicle } = useContext(VehicleContext);
-  const { isAuth, setIsAuth } = useContext(AuthContext);
+  const { isAuth, logout } = useContext(AuthContext);
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
 
@@ -123,7 +123,7 @@ const Sidebar = () => {
 // --- BOTTOM NAV (Mobile) ---
 const BottomNav = () => {
   const { theme, toggleTheme } = useContext(ThemeContext);
-  const { setIsAuth } = useContext(AuthContext);
+  const { logout } = useContext(AuthContext);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const location = useLocation();
   const isActive = (path) => location.pathname === path;

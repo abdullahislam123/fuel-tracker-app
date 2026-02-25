@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { FiUser, FiMail, FiLock, FiTrash2, FiSave, FiArrowLeft, FiActivity } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
+import { AuthContext } from "../context/AuthContext";
 
 const Profile = () => {
+  const { logout, updateUser } = useContext(AuthContext);
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || {});
   const [formData, setFormData] = useState({
     username: user.username || "",
@@ -32,7 +34,7 @@ const Profile = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        localStorage.setItem("user", JSON.stringify(data.user));
+        updateUser(data.user);
         setUser(data.user);
         alert("Profile Updated");
       }
@@ -49,7 +51,7 @@ const Profile = () => {
         headers: { "Authorization": token }
       });
       if (res.ok) {
-        localStorage.clear();
+        logout();
         navigate("/login");
       }
     } catch (err) { alert("Deletion failed"); }
