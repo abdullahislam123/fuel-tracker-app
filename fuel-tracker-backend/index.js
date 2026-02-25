@@ -119,12 +119,20 @@ app.get('/health-check', async (req, res) => {
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    if (!email) return res.status(400).json({ error: "Email is missing" });
+    if (!email || !password || !username) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const normalizedEmail = email.toLowerCase();
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email is already registered" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       username,
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password: hashedPassword
     });
 
@@ -132,7 +140,7 @@ app.post('/register', async (req, res) => {
     res.status(201).json({ message: "User registered successfully!" });
   } catch (error) {
     console.error("REGISTER ERROR:", error);
-    res.status(500).json({ error: "Registration failed." });
+    res.status(500).json({ error: "Registration failed. Please try again." });
   }
 });
 

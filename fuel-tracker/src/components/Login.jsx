@@ -8,14 +8,16 @@ import { AuthContext } from "../context/AuthContext";
 const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { theme } = useContext(ThemeContext);
-  const { setIsAuth } = useContext(AuthContext);
+  const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     try {
       const res = await fetch(`${API_URL}/login`, {
         method: "POST",
@@ -24,15 +26,16 @@ const Login = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        setIsAuth(true); // ⭐ Trigger reactive update
+        login(data.user, data.token);
         navigate("/dashboard");
       } else {
-        alert(data.error);
+        setError(data.error || "Login failed");
       }
-    } catch (err) { alert("Login failed"); }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError("Server connection failed. Try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -50,6 +53,7 @@ const Login = () => {
           </div>
           <h1 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic mb-2">Login<span className="text-emerald-500">.</span></h1>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] italic">Access Operations Hub</p>
+          {error && <p className="text-red-500 text-[10px] font-bold mt-4 animate-bounce uppercase tracking-widest italic">{error}</p>}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

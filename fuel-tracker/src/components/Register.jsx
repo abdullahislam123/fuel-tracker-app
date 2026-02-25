@@ -7,6 +7,7 @@ import { ThemeContext } from "../context/Themecontext";
 const Register = () => {
   const [formData, setFormData] = useState({ username: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { theme } = useContext(ThemeContext);
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     try {
       const res = await fetch(`${API_URL}/register`, {
         method: "POST",
@@ -24,10 +26,13 @@ const Register = () => {
       if (res.ok) {
         navigate("/login");
       } else {
-        alert(data.error);
+        setError(data.error || "Registration failed");
       }
-    } catch (err) { alert("Registration failed"); }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError("Server connection failed. Try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,6 +50,7 @@ const Register = () => {
           </div>
           <h1 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic mb-2">Register<span className="text-emerald-500">.</span></h1>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] italic">Create Your Account</p>
+          {error && <p className="text-red-500 text-[10px] font-bold mt-4 animate-bounce uppercase tracking-widest italic">{error}</p>}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

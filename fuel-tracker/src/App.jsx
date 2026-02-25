@@ -22,7 +22,7 @@ import MapViewer from "./components/MapViewer";
 // ⭐ Context imports
 import { ThemeContext } from "./context/Themecontext";
 import { VehicleContext } from "./context/VehicleContext";
-import { AuthContext } from "./context/AuthContext";
+import { AuthContext, AuthProvider } from "./context/AuthContext";
 
 const checkLoggedIn = () => localStorage.getItem("token") !== null;
 
@@ -51,8 +51,7 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     if (window.confirm("Logout?")) {
-      localStorage.clear();
-      setIsAuth(false);
+      logout();
     }
   };
 
@@ -164,12 +163,12 @@ const BottomNav = () => {
             {theme === 'light' ? <FiMoon size={28} className="text-slate-600" /> : <FiSun size={28} className="text-yellow-400" />}
             <span className="text-[10px] font-black uppercase tracking-widest">{theme === 'light' ? 'Dark' : 'Light'}</span>
           </button>
-          <button onClick={() => { localStorage.clear(); setIsAuth(false); }} className="flex flex-col items-center gap-3 p-6 bg-red-500/5 rounded-3xl">
+          <button onClick={logout} className="flex flex-col items-center gap-3 p-6 bg-red-500/5 rounded-3xl w-full">
             <FiLogOut size={28} className="text-red-500" />
             <span className="text-[10px] font-black uppercase tracking-widest text-red-500">Logout</span>
           </button>
         </div>
-      </div>
+      </div >
 
       <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] bg-white/90 dark:bg-[#12141c]/90 backdrop-blur-2xl border border-white/20 dark:border-white/5 h-20 rounded-[2.5rem] flex items-center justify-around px-2 shadow-2xl z-50">
         <Link to="/dashboard" className={`p-4 ${isActive("/dashboard") ? "text-emerald-500 scale-110" : "text-gray-400"}`}><FiHome size={24} /></Link>
@@ -186,11 +185,27 @@ const BottomNav = () => {
   );
 };
 
+// --- HELPER COMPONENTS ---
+const AuthWrapper = ({ type = "landing" }) => {
+  const { isAuth } = useContext(AuthContext);
+  if (isAuth) return <Navigate to="/dashboard" replace />;
+
+  if (type === "login") return <Login />;
+  if (type === "register") return <Register />;
+  return <LandingPage />;
+};
+
+const ProtectedRoute = ({ children }) => {
+  const { isAuth } = useContext(AuthContext);
+  if (!isAuth) return <Navigate to="/login" replace />;
+  return children;
+};
+
 // --- LAYOUT ---
 const Layout = ({ children }) => {
   const { theme } = useContext(ThemeContext);
   const { activeVehicle } = useContext(VehicleContext);
-  const { isAuth } = useContext(AuthContext);
+  const { isAuth, logout } = useContext(AuthContext);
 
   if (!isAuth) return <Navigate to="/login" replace />;
   const hasVehicle = activeVehicle || localStorage.getItem("activeVehicleId");
@@ -213,7 +228,6 @@ const Layout = ({ children }) => {
 const App = () => {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [activeVehicle, setActiveVehicle] = useState(null);
-  const [isAuth, setIsAuth] = useState(checkLoggedIn());
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -229,16 +243,16 @@ const App = () => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuth, setIsAuth }}>
+    <AuthProvider>
       <ThemeContext.Provider value={{ theme, toggleTheme }}>
         <VehicleContext.Provider value={{ activeVehicle, setActiveVehicle }}>
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={isAuth ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
-              <Route path="/login" element={isAuth ? <Navigate to="/dashboard" replace /> : <Login />} />
-              <Route path="/register" element={isAuth ? <Navigate to="/dashboard" replace /> : <Register />} />
-              <Route path="/select-vehicle" element={isAuth ? <VehicleSelect /> : <Navigate to="/login" replace />} />
-              <Route path="/add-vehicle" element={isAuth ? <AddVehicle /> : <Navigate to="/login" replace />} />
+              <Route path="/" element={<AuthWrapper />} />
+              <Route path="/login" element={<AuthWrapper type="login" />} />
+              <Route path="/register" element={<AuthWrapper type="register" />} />
+              <Route path="/select-vehicle" element={<ProtectedRoute><VehicleSelect /></ProtectedRoute>} />
+              <Route path="/add-vehicle" element={<ProtectedRoute><AddVehicle /></ProtectedRoute>} />
 
 
               <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
@@ -254,7 +268,7 @@ const App = () => {
           </BrowserRouter>
         </VehicleContext.Provider>
       </ThemeContext.Provider>
-    </AuthContext.Provider>
+    </AuthProvider>
   );
 };
 
