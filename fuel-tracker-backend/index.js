@@ -211,7 +211,8 @@ app.get('/vehicles', authenticateToken, async (req, res) => {
     const vehicles = await Vehicle.find({ userId: req.user.id });
     res.status(200).json(vehicles);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch vehicles" });
+    console.error("GET VEHICLES ERROR:", error);
+    res.status(500).json({ error: "Failed to fetch vehicles", details: error.message });
   }
 });
 
@@ -250,7 +251,8 @@ app.get('/history', authenticateToken, async (req, res) => {
     const entries = await FuelEntry.find(query).sort({ createdAt: -1 });
     res.status(200).json(entries);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch history" });
+    console.error("GET HISTORY ERROR:", error);
+    res.status(500).json({ error: "Failed to fetch history", details: error.message });
   }
 });
 
